@@ -132,6 +132,54 @@ enum n20_error_s {
     n20_error_parent_path_size_exceeds_max_e = 14,
 
     /**
+     * @brief A service node function was called without the state pointer.
+     */
+    n20_error_unexpected_null_service_state_e = 30,
+
+    /**
+     * @brief Client slot index is out of range.
+     *
+     * If a service can only support a limited number of clients
+     * due to architecture and/or resource constraints, this error may be returned
+     * if the limit is exceeded by a caller.
+     *
+     * This error must never be returned to a remote client. Because remote
+     * client must be identified architecturally and cannot choose their slot
+     * number. The occurrence of this error indicates a service internal
+     * logic or design problem.
+     */
+    n20_error_client_slot_index_out_of_range_e = 31,
+
+    /**
+     * @brief Client slot empty.
+     *
+     * A service node function was called with a client slot index
+     * that points to an empty slot.
+     *
+     * This hints at a potential issue with service slot management.
+     * But it can also indicate that the client slot was disabled
+     * deliberately in the case it was no longer deemed trustworthy.
+     */
+    n20_error_client_slot_empty_e = 32,
+
+    /**
+     * @brief Unexpected NULL pointer open_dice input.
+     *
+     * This error is returned when the open_dice input argument is NULL.
+     */
+    n20_error_unexpected_null_open_dice_input_e = 33,
+
+    /**
+     * @brief Unsupported key usage.
+     *
+     * This error is returned when an ECA end-enty key is requested
+     * with an unsupported key usage. E.g. as of this writing
+     * only "digital signature" key usage is allowed. All other
+     * key usages will be rejected with this error.
+     */
+    n20_error_unsupported_key_usage_e = 34,
+
+    /**
      * @brief Request type unknown.
      *
      * The implementation does not recognize the request type
