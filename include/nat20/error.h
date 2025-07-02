@@ -64,6 +64,9 @@ enum n20_error_s {
     n20_error_client_slot_empty_e = 8,
     n20_error_parent_path_size_exceeds_max_e = 9,
     n20_error_missing_parent_service_e = 10,
+    n20_error_unexpected_message_structure_e = 11,
+    n20_error_unrecognized_request_type_e = 12,
+    n20_error_write_position_overflow_e = 13,
     n20_error_unsupported_certificate_format_e = 15,
     /**
      * @brief The crypto context given to an interface was invalid.
