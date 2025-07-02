@@ -1,0 +1,145 @@
+; Copyright 2025 Aurora Operations, Inc.
+;
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+
+; This document specifies the CBOR-encoded message formats for the Libnat20 POC service.
+; It is intended to be used as a reference for developers implementing the service.
+; It has not been subject to a syntax checker and may contain errors.
+; The implementation in messages.c/.h has been chiseled by hand in order
+; to limit the dependency on external libraries of this project.
+; If you use this specification to generate code for (un)marshalling message,
+; and you find that this specification is incomplete or erroneous, please file
+; an issue at https://github.com/aurora-opensource/libnat20/issues and/or
+; submit a pull request with your proposed changes. You rock!
+
+; Main request message structure
+request = [
+  request_type: uint,
+  payload: request_payload
+]
+
+request_type = 0..4  ; promote=0, issue_cdi_cert=1, issue_eca_cert=2, issue_eca_ee_cert=3, eca_ee_sign=4
+
+request_payload = promote_request /
+                  issue_cdi_cert_request /
+                  issue_eca_cert_request /
+                  issue_eca_ee_cert_request /
+                  eca_ee_sign_request
+
+; Promote request (key 0)
+promote_request = {
+  1: compressed_context_bytes,  ; compressed_context
+  * int => any                  ; extensible for unknown keys
+}
+
+compressed_context_bytes = bstr
+
+; Issue CDI certificate request (key 1)
+issue_cdi_cert_request = {
+  1: issuer_key_type,           ; issuer_key_type
+  2: subject_key_type,          ; subject_key_type
+  3: open_dice_input,           ; context
+  ? 4: compressed_context_array, ; parent_path (optional)
+  5: certificate_format,        ; certificate_format
+  * int => any                  ; extensible for unknown keys
+}
+
+; Issue ECA certificate request (key 2)
+issue_eca_cert_request = {
+  1: issuer_key_type,           ; issuer_key_type
+  2: subject_key_type,          ; subject_key_type
+  ? 3: compressed_context_array, ; parent_path (optional)
+  4: certificate_format,        ; certificate_format
+  ? 7: challenge_bytes,         ; challenge (optional)
+  * int => any                  ; extensible for unknown keys
+}
+
+; Issue ECA End-Entity certificate request (key 3)
+issue_eca_ee_cert_request = {
+  1: issuer_key_type,           ; issuer_key_type
+  2: subject_key_type,          ; subject_key_type
+  ? 3: compressed_context_array, ; parent_path (optional)
+  4: certificate_format,        ; certificate_format
+  ? 5: name_string,             ; name (optional)
+  ? 6: key_usage_bytes,         ; key_usage (optional)
+  ? 7: challenge_bytes,         ; challenge (optional)
+  * int => any                  ; extensible for unknown keys
+}
+
+; ECA End-Entity sign request (key 4)
+eca_ee_sign_request = {
+  2: subject_key_type,          ; subject_key_type (no issuer_key_type for signing)
+  ? 3: compressed_context_array, ; parent_path (optional)
+  ? 5: name_string,             ; name (optional)
+  ? 6: key_usage_bytes,         ; key_usage (optional)
+  8: message_bytes,             ; message
+  * int => any                  ; extensible for unknown keys
+}
+
+; OpenDICE input structure
+open_dice_input = {
+  ? 1: code_hash_bytes,         ; code_hash (optional)
+  ? 2: code_descriptor_bytes,   ; code_descriptor (optional)
+  ? 3: configuration_hash_bytes, ; configuration_hash (optional)
+  ? 4: configuration_descriptor_bytes, ; configuration_descriptor (optional)
+  ? 5: authority_hash_bytes,    ; authority_hash (optional)
+  ? 6: authority_descriptor_bytes, ; authority_descriptor (optional)
+  ? 7: mode_uint,               ; mode (optional, 0-3)
+  ? 8: hidden_bytes,            ; hidden (optional)
+  ? 9: profile_name_string,     ; profile_name (optional)
+  * int => any                  ; extensible for unknown keys
+}
+
+; Common types
+compressed_context_array = [* compressed_context_bytes]
+issuer_key_type = uint        ; crypto key type enum
+subject_key_type = uint       ; crypto key type enum
+certificate_format = uint     ; certificate format enum
+mode_uint = 0..3              ; not_configured=0, normal=1, debug=2, recovery=3
+
+; Data types
+code_hash_bytes = bstr
+code_descriptor_bytes = bstr
+configuration_hash_bytes = bstr
+configuration_descriptor_bytes = bstr
+authority_hash_bytes = bstr
+authority_descriptor_bytes = bstr
+hidden_bytes = bstr
+challenge_bytes = bstr
+key_usage_bytes = bstr
+message_bytes = bstr
+profile_name_string = tstr
+name_string = tstr
+
+; Response messages
+issue_cert_response = {
+  ? 1: error_code_uint,         ; error_code (present if error)
+  ? 2: certificate_bytes,       ; certificate (present if success)
+  * int => any                  ; extensible for unknown keys
+}
+
+error_response = {
+  ? 1: error_code_uint,         ; error_code (present if error)
+  * int => any                  ; extensible for unknown keys
+}
+
+eca_ee_sign_response = {
+  ? 1: error_code_uint,         ; error_code (present if error)
+  ? 2: signature_bytes,         ; signature (present if success)
+  * int => any                  ; extensible for unknown keys
+}
+
+; Response data types
+error_code_uint = uint
+certificate_bytes = bstr
+signature_bytes = bstr

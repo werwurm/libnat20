@@ -101,6 +101,21 @@ set(LIBNAT20_TEST_SOURCES
     src/core/test/x509_ext_tcg_dice_ueid.cpp
 )
 
+set(LIBNAT20_SERVICE_SOURCES
+    # Add service source files here.
+    src/service/messages.c
+)
+
+set(LIBNAT20_SERVICE_PUB_HEADERS
+    # Add service public headers here.
+    include/nat20/service/messages.h
+)
+
+set(LIBNAT20_SERVICE_TEST_SOURCES
+    src/service/test/messages.cpp
+    src/service/test/test.cpp
+)
+
 set(LIBNAT20_DOC_PAGES
     # Add additional input files for doxygen here.
     README.md
@@ -156,6 +171,31 @@ target_compile_options(nat20
 target_include_directories(nat20
     PUBLIC include
 )
+
+###################################################################################################
+
+###################################################################################################
+# The nat20_service library is also part of the product of this project.
+# It will always be compiled.
+add_library(nat20_service STATIC)
+
+target_sources(nat20_service
+    PRIVATE ${LIBNAT20_SERVICE_SOURCES}
+    INTERFACE ${LIBNAT20_SERVICE_PUB_HEADERS}
+)
+
+target_compile_options(nat20_service
+    PRIVATE -pedantic
+    PRIVATE -Wall
+    PRIVATE -Wextra
+    PRIVATE -Werror
+)
+
+target_include_directories(nat20_service
+    PUBLIC include
+)
+
+target_link_libraries(nat20_service nat20)
 
 ###################################################################################################
 
@@ -265,6 +305,13 @@ if (NAT20_WITH_TESTS)
     )
     target_link_libraries(nat20_test_bin gtest_main nat20 crypto pki nat20_crypto_boringssl nat20_test_utils)
     add_test(NAME nat20_test COMMAND nat20_test_bin)
+
+    add_executable(nat20_service_test_bin)
+    target_sources(nat20_service_test_bin
+        PRIVATE ${LIBNAT20_SERVICE_TEST_SOURCES}
+    )
+    target_link_libraries(nat20_service_test_bin gtest_main nat20 crypto pki nat20_crypto_boringssl nat20_test_utils nat20_service)
+    add_test(NAME nat20_service_test COMMAND nat20_service_test_bin)
 
     add_executable(nat20_crypto_test_bin)
     target_sources(nat20_crypto_test_bin

@@ -40,6 +40,66 @@ enum n20_error_s {
      * @brief No error occurred.
      */
     n20_error_ok_e = 0,
+
+    /**
+     * @brief Insufficient buffer size.
+     *
+     * This is typically returned by certificate rendering operations
+     * if @ref n20_stream_has_buffer_overflow returned true.
+     */
+    n20_error_insufficient_buffer_size_e = 3,
+
+    /**
+     * @brief Unexpected NULL pointer in buffer size argument.
+     *
+     * Returned by functions that take a buffer size in/out argument
+     * if the buffer size pointer was NULL.
+     */
+    n20_error_unexpected_null_buffer_size_e = 4,
+
+    /**
+     * @brief Write position overflow.
+     *
+     * A certificate rendering operation encountered a write position overflow.
+     * I.e. @ref n20_stream_has_write_position_overflow returned true.
+     */
+    n20_error_write_position_overflow_e = 7,
+
+    /**
+     * @brief Unexpected message structure.
+     *
+     * This error is returned by message parsing function
+     * when they encounter an unexpected header or end of message.
+     */
+    n20_error_unexpected_message_structure_e = 11,
+
+    /**
+     * @brief Parent path size exceeds maximum allowed.
+     *
+     * When deriving the effective CDI on behalf of a proxy DCIE service
+     * node, a stateless service needs to be provided with the full
+     * parent path. If the implementation limits the maximal allowable
+     * path length, e.g., due to memory constraints, this error may be returned
+     * if the limit is exceeded by a caller.
+     */
+    n20_error_parent_path_size_exceeds_max_e = 12,
+
+    /**
+     * @brief Request type unknown.
+     *
+     * The implementation does not recognize the request type
+     * as a valid request type.
+     */
+    n20_error_request_type_unknown_e = 18,
+
+    /**
+     * @brief Request type not implemented.
+     *
+     * The implementation recognizes the request type
+     * but does not support it.
+     */
+    n20_error_request_type_not_implemented_e = 19,
+
     /**
      * @brief The crypto context given to an interface was invalid.
      *
