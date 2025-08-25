@@ -34,7 +34,7 @@ class X509ExtOpenDiceInputTest
                                                std::optional<std::vector<uint8_t>>,
                                                std::optional<std::vector<uint8_t>>,
                                                std::optional<std::vector<uint8_t>>,
-                                               n20_x509_ext_open_dice_modes_t const,
+                                               n20_open_dice_modes_t const,
                                                std::optional<std::string>,
                                                std::vector<uint8_t> const>> {};
 
@@ -220,7 +220,7 @@ INSTANTIATE_TEST_CASE_P(OpenDiceInputEncoding,
                                                    CONFIGURATION_INLINE,
                                                    AUTHORITY_HASH,
                                                    AUTHORITY_DESCRIPTOR,
-                                                   n20_x509_ext_open_dice_normal_e,
+                                                   n20_open_dice_mode_normal_e,
                                                    AURORA_OPEN_DICE_PROFILE,
                                                    EXTENSION_WITH_INLINE_CONFIGURATION),
                                         std::tuple(CODE_HASH,
@@ -229,7 +229,7 @@ INSTANTIATE_TEST_CASE_P(OpenDiceInputEncoding,
                                                    CONFIGURATION_DESCRIPTOR,
                                                    AUTHORITY_HASH,
                                                    AUTHORITY_DESCRIPTOR,
-                                                   n20_x509_ext_open_dice_normal_e,
+                                                   n20_open_dice_mode_normal_e,
                                                    AURORA_OPEN_DICE_PROFILE,
                                                    EXTENSION_WITH_CONFIGURATION_DESCRIPTOR),
                                         std::tuple(std::nullopt,
@@ -238,7 +238,7 @@ INSTANTIATE_TEST_CASE_P(OpenDiceInputEncoding,
                                                    std::nullopt,
                                                    std::nullopt,
                                                    std::nullopt,
-                                                   n20_x509_ext_open_dice_not_configured_e,
+                                                   n20_open_dice_mode_not_configured_e,
                                                    std::nullopt,
                                                    EXTENSION_WITHOUT_OPTIONALS)));
 
@@ -261,8 +261,8 @@ TEST_P(X509ExtOpenDiceInputTest, OpenDiceInputEncoding) {
           optional_profile,
           expected] = GetParam();
 
-    n20_x509_ext_open_dice_input_t inputs;
-    std::memset(&inputs, 0, sizeof(n20_x509_ext_open_dice_input_t));
+    n20_open_dice_input_t inputs;
+    std::memset(&inputs, 0, sizeof(n20_open_dice_input_t));
 
     inputs.code_hash = v2slice(optional_code_hash);
     inputs.code_descriptor = v2slice(optional_code_descriptor);
