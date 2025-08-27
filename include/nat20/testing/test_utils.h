@@ -44,3 +44,8 @@ std::string hexdump(std::vector<uint8_t> const& data);
  * @return std::string A string representation of the hexadecimal data.
  */
 std::string hex(std::vector<uint8_t> const& data);
+
+std::string hexdump_side_by_side(std::string const& label_a,
+                                 std::vector<uint8_t> const& a,
+                                 std::string const& label_b,
+                                 std::vector<uint8_t> const& b);

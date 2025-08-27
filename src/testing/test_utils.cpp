@@ -52,3 +52,51 @@ std::string hex(std::vector<uint8_t> const& data) {
     }
     return s.str();
 }
+
+std::string hexdump_side_by_side(std::string const& label_a,
+                                 std::vector<uint8_t> const& a,
+                                 std::string const& label_b,
+                                 std::vector<uint8_t> const& b) {
+    std::stringstream s;
+    size_t max_size = a.size() > b.size() ? a.size() : b.size();
+    s << std::hex;
+
+    s << "      " << label_a << std::string(52 - label_a.size(), ' ') << label_b << "\n";
+
+    size_t lines = (max_size + 15) / 16;
+    for (size_t line = 0; line < lines; ++line) {
+        s << std::setw(4) << std::setfill('0') << (line * 16) << ": ";
+        for (size_t i = 0; i < 16; ++i) {
+            size_t index = line * 16 + i;
+            if (i == 8) {
+                s << "  ";
+            } else if (i != 0) {
+                s << " ";
+            }
+            if (index < a.size()) {
+                s << std::setw(2) << std::setfill('0') << (int)a[index];
+            } else {
+                s << "  ";
+            }
+        }
+        s << "    ";
+        for (size_t i = 0; i < 16; ++i) {
+            size_t index = line * 16 + i;
+            if (index < max_size) {
+                if (i == 8) {
+                    s << "  ";
+                } else if (i != 0) {
+                    s << " ";
+                }
+                if (index < b.size()) {
+                    s << std::setw(2) << std::setfill('0') << (int)b[index];
+                } else {
+                    s << "  ";
+                }
+            }
+        }
+        s << "\n";
+    }
+
+    return s.str();
+}
