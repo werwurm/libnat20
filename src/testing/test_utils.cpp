@@ -53,6 +53,19 @@ std::string hex(std::vector<uint8_t> const& data) {
     return s.str();
 }
 
+std::string hex_as_c_array(std::vector<uint8_t> const& data) {
+    std::stringstream s;
+    s << std::hex << "uint8_t data[] = {";
+    for (size_t i = 0; i < data.size(); ++i) {
+        s << "0x" << std::setw(2) << std::setfill('0') << (int)data[i];
+        if (i != data.size() - 1) {
+            s << ",";
+        }
+    }
+    s << "};\n";
+    return s.str();
+}
+
 std::string hexdump_side_by_side(std::string const& label_a,
                                  std::vector<uint8_t> const& a,
                                  std::string const& label_b,

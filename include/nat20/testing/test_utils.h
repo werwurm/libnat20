@@ -45,6 +45,30 @@ std::string hexdump(std::vector<uint8_t> const& data);
  */
 std::string hex(std::vector<uint8_t> const& data);
 
+/**
+ * @brief Convert a byte vector to a C-style array string.
+ *
+ * @param data The byte vector to convert.
+ * @return std::string A string representation of the byte vector as a C-style array.
+ */
+std::string hex_as_c_array(std::vector<uint8_t> const& data);
+
+/**
+ * @brief Convert two byte vectors to a side-by-side hex dump string.
+ *
+ * This function generates a side-by-side hex dump comparison of two byte vectors.
+ * It is useful for visually comparing the contents of two byte arrays in a human-readable format.
+ * It writes the output in three columns: the first column contains the
+ * offset in hexadecimal, the second column contains the hex dump of the first byte vector,
+ * and the third column contains the hex dump of the second byte vector.
+ * The second and third columns are labeled with the provided labels.
+ *
+ * @param label_a Label for the first byte vector.
+ * @param a First byte vector to compare.
+ * @param label_b Label for the second byte vector.
+ * @param b Second byte vector to compare.
+ * @return std::string A string representation of the side-by-side hex dump.
+ */
 std::string hexdump_side_by_side(std::string const& label_a,
                                  std::vector<uint8_t> const& a,
                                  std::string const& label_b,
