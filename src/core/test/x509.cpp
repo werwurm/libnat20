@@ -15,8 +15,6 @@
  */
 
 #include <gtest/gtest.h>
-#include <nat20/asn1.h>
-#include <nat20/crypto.h>
 #include <nat20/crypto_bssl/crypto.h>
 #include <nat20/testing/test_bssl_utils.h>
 #include <nat20/testing/test_utils.h>
@@ -538,27 +536,6 @@ INSTANTIATE_TEST_CASE_P(
                    },
                    true)));
 
-typedef struct n20_x509_rs_s {
-    uint8_t const* signature;
-    size_t signature_size;
-} n20_x509_rs_t;
-
-void n20_x509_rs_content(n20_stream_t* const s, void* context) {
-    n20_x509_rs_t const* rs = (n20_x509_rs_t const*)context;
-
-    n20_asn1_integer(s,
-                     {rs->signature_size / 2, rs->signature + rs->signature_size / 2},
-                     false,
-                     false,
-                     n20_asn1_tag_info_no_override());
-    n20_asn1_integer(
-        s, {rs->signature_size / 2, rs->signature}, false, false, n20_asn1_tag_info_no_override());
-}
-
-void n20_x509_rs(n20_stream_t* const s, n20_x509_rs_t const* const rs) {
-    n20_asn1_sequence(s, n20_x509_rs_content, (void*)rs, n20_asn1_tag_info_no_override());
-}
-
 // Test the encoding and successful verification of a well formed cert. It additionally also tests
 // that a well formed cert created using a different cdi does not verify.
 TEST_P(CertTest, CertEncoding) {
@@ -657,21 +634,6 @@ TEST_P(CertTest, CertEncoding) {
     ASSERT_EQ(n20_error_ok_e, err);
     crypto_ctx->key_free(crypto_ctx, signing_key);
 
-    switch (key_type) {
-        case n20_crypto_key_type_secp256r1_e:
-        case n20_crypto_key_type_secp384r1_e: {
-            n20_x509_rs_t rs = {.signature = signature, .signature_size = signature_size};
-            n20_stream_init(&s, &buffer[0], sizeof(buffer));
-            n20_x509_rs(&s, &rs);
-            ASSERT_FALSE(n20_stream_has_buffer_overflow(&s));
-            ASSERT_FALSE(n20_stream_has_write_position_overflow(&s));
-            memcpy(signature, n20_stream_data(&s), n20_stream_byte_count(&s));
-            signature_size = n20_stream_byte_count(&s);
-        }
-        default:
-            break;
-    }
-
     // Assemble the full certificate and DER encode it.
     n20_x509_t cert = {
         .tbs = &tbs,
@@ -753,21 +715,6 @@ TEST_P(CertTest, CertEncoding) {
         crypto_ctx->sign(crypto_ctx, signing_key2, &tbs_der_gather2, signature2, &signature_size2);
     ASSERT_EQ(n20_error_ok_e, err);
     crypto_ctx->key_free(crypto_ctx, signing_key2);
-
-    switch (key_type) {
-        case n20_crypto_key_type_secp256r1_e:
-        case n20_crypto_key_type_secp384r1_e: {
-            n20_x509_rs_t rs = {.signature = signature2, .signature_size = signature_size2};
-            n20_stream_init(&s, &buffer2[0], sizeof(buffer2));
-            n20_x509_rs(&s, &rs);
-            ASSERT_FALSE(n20_stream_has_buffer_overflow(&s));
-            ASSERT_FALSE(n20_stream_has_write_position_overflow(&s));
-            memcpy(signature2, n20_stream_data(&s), n20_stream_byte_count(&s));
-            signature_size2 = n20_stream_byte_count(&s);
-        }
-        default:
-            break;
-    }
 
     // Assemble the full certificate and DER encode it.
     n20_x509_t cert2 = {
