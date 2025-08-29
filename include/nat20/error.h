@@ -40,6 +40,75 @@ enum n20_error_s {
      * @brief No error occurred.
      */
     n20_error_ok_e = 0,
+
+    /**
+     * @brief The function requires a crypto context to be passed, but none was provided.
+     */
+    n20_error_missing_crypto_context_e = 1,
+
+    /**
+     * @brief Insufficient buffer size.
+     *
+     * This is typically returned by certificate rendering operations
+     * if @ref n20_stream_has_buffer_overflow returned true.
+     */
+    n20_error_insufficient_buffer_size_e = 3,
+
+    /**
+     * @brief Unexpected NULL pointer in buffer size argument.
+     *
+     * Returned by functions that take a buffer size in/out argument
+     * if the buffer size pointer was NULL.
+     */
+    n20_error_unexpected_null_buffer_size_e = 4,
+
+    /**
+     * @brief Unexpected NULL pointer key_handle argument.
+     */
+    n20_error_unexpected_null_key_handle_e = 5,
+
+    /**
+     * @brief Unexpected NULL pointer certificate info.
+     */
+    n20_error_unexpected_null_certificate_info_e = 6,
+
+    /**
+     * @brief Write position overflow.
+     *
+     * A certificate rendering operation encountered a write position overflow.
+     * I.e. @ref n20_stream_has_write_position_overflow returned true.
+     */
+    n20_error_write_position_overflow_e = 7,
+
+    /**
+     * @brief Unexpected NULL pointer public key buffer.
+     *
+     * Returned by @n20_compute_certificate_context if no public key buffer
+     * was provided.
+     */
+    n20_error_unexpected_null_public_key_buffer_e = 8,
+
+    /**
+     * @brief Unsupported certificate type.
+     *
+     * Returned if an unexpected value of @ref n20_cert_type_t was encountered.
+     */
+    n20_error_unsupported_certificate_type_e = 9,
+
+    /**
+     * @brief Unsupported certificate format.
+     *
+     * Returned if an unexpected value of @ref n20_cert_format_t was encountered.
+     */
+    n20_error_unsupported_certificate_format_e = 10,
+
+    /**
+     * @brief Missing payload callback function.
+     *
+     * Returned by @ref n20_cose_sign1_payload if no payload callback function
+     * and/or context was provided.
+     */
+    n20_error_missing_payload_callback_e = 40,
     /**
      * @brief The crypto context given to an interface was invalid.
      *
