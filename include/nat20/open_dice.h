@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <nat20/crypto.h>
 #include <nat20/types.h>
 
 #ifdef __cplusplus
@@ -171,6 +172,218 @@ struct n20_open_dice_input_s {
  * @brief Alias for @ref n20_open_dice_input_s.
  */
 typedef struct n20_open_dice_input_s n20_open_dice_input_t;
+
+/**
+ * @brief Subject public key information for the DICE certificate.
+ */
+struct n20_open_dice_public_key_info_s {
+    /**
+     * @brief The public key.
+     *
+     * This field contains the raw public key material.
+     * The format depends on the key algorithm.
+     *
+     * For ED25519, the public key is the 32 byte compressed point format as described in
+     * RFC8032 Section 5.1.5.
+     *
+     * For P-256 and P-384, the public key is the concatenation of the big-endian
+     * representation of the x and y coordinates prefixed with 0x04. Both integers
+     * always have the same size as the signing key in octets, i.e.,
+     * 32 for P-256 and 48 for P-384, and they are padded with
+     * leading zeroes if necessary. This corresponds to the uncompressed
+     * point encoding as specified in X9.62.
+     */
+    n20_slice_t key;
+    /**
+     * @brief The key algorithm used for the public key.
+     *
+     * This field indicates the algorithm used to generate the public key.
+     *
+     * Possible values are:
+     * - @ref n20_crypto_key_type_ed25519_e
+     * - @ref n20_crypto_key_type_secp256r1_e
+     * - @ref n20_crypto_key_type_secp384r1_e
+     */
+    n20_crypto_key_type_t algorithm;
+};
+
+/**
+ * @brief Alias for @ref n20_open_dice_public_key_info_s.
+ */
+typedef struct n20_open_dice_public_key_info_s n20_open_dice_public_key_info_t;
+
+/**
+ * @defgroup open_dice_key_usage_macros "Key Usage Macros"
+ *
+ * These macros set the corresponding flags in the key
+ * usage field of @ref n20_open_dice_cert_info_s.
+ * Each macro expects a pointer to a uint8_t array of length 2.
+ *
+ * The key usage flags are defined in RFC5280 Section 4.2.1.3,
+ * however, they are expressed in a different bit order here
+ * following the OpenDICE specification for CWTs (CBOR web tokens).
+ *
+ * OpenDICE places Bit 0 (DigitalSignature) at the least significant bit
+ * in the first byte.
+ *
+ * This is in contrast to X509 certificates where the key usage bits
+ * are expressed as a ASN.1 BIT STRING, which index bits from most to least
+ * significant, e.g., Bit 0 (DigitalSignature) would be the most significant bit.
+ *
+ * The choice for using the OpenDICE CWT bit ordering over X509's was made
+ * to optimize for the former. The CWT implementation turns out compacter
+ * than the X509 variant also supported by libnat20. So X509 implementation
+ * will have to eat the overhead of reversing the bit order before encoding.
+ *
+ * # Example
+ *
+ * @code{.c}
+ * n20_open_dice_cert_info_t key_usage = {0};
+ * N20_OPEN_DICE_KEY_USAGE_SET_KEY_CERT_SIGN(key_usage.key_usage);
+ * @endcode
+ * @{
+ */
+
+/**
+ * @brief The subject key can be used to issue digital signatures.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_DIGITAL_SIGNATURE(key_usage) ((key_usage)[0] |= 0x1)
+/**
+ * @brief The subject key can be used to sign statements of commitment.
+ *
+ * This field was formerly known as nonRepudiation flag.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_CONTENT_COMMITMENT(key_usage) ((key_usage)[0] |= 0x2)
+/**
+ * @brief The subject key can be used for encryption of key material.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_KEY_ENCIPHERMENT(key_usage) ((key_usage)[0] |= 0x4)
+/**
+ * @brief The subject key can be used for encryption of arbitrary messages.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_DATA_ENCIPHERMENT(key_usage) ((key_usage)[0] |= 0x8)
+/**
+ * @brief The subject key can be used for key agreement.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_KEY_AGREEMENT(key_usage) ((key_usage)[0] |= 0x10)
+/**
+ * @brief The subject key can be used for signing certificates.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_KEY_CERT_SIGN(key_usage) ((key_usage)[0] |= 0x20)
+/**
+ * @brief The subject key can be used for signing certificate revocation lists.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_CRL_SIGN(key_usage) ((key_usage)[0] |= 0x40)
+/**
+ * @brief The subject key can be used only for enciphering data during key agreement.
+ *
+ * The key agreement flag must also be set.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_ENCIPHER_ONLY(key_usage) ((key_usage)[0] |= 0x80)
+/**
+ * @brief the subject key can be used only for deciphering data during key agreement.
+ *
+ * The key agreement flag must also be set.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_SET_DECIPHER_ONLY(key_usage) ((key_usage)[1] |= 0x1)
+
+/**
+ * @}
+ */
+
+/**
+ * @defgroup Key Usage Test Macros
+ *
+ * These macros test whether the corresponding flags are set in the key
+ * usage field of @ref n20_open_dice_cert_info_s.
+ * Each macro expects a pointer to a uint8_t array of length 2 and returns
+ * a non-zero value if the flag is set, zero if not set.
+ *
+ * @sa open_dice_key_usage_macros
+ *
+ * # Example
+ *
+ * @code{.c}
+ * n20_open_dice_cert_info_t cert_info = {0};
+ * N20_OPEN_DICE_KEY_USAGE_SET_KEY_CERT_SIGN(cert_info.key_usage);
+ *
+ * if (N20_OPEN_DICE_KEY_USAGE_IS_DIGITAL_SIGNATURE_SET(&cert_info.key_usage)) {
+ *     // Digital signature flag is set
+ * }
+ * @endcode
+ * @{
+ */
+
+/**
+ * @brief Test if the subject key can be used to issue digital signatures.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_DIGITAL_SIGNATURE_SET(key_usage) ((key_usage)[0] & 0x1)
+
+/**
+ * @brief Test if the subject key can be used to sign statements of commitment.
+ *
+ * This field was formerly known as nonRepudiation flag.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_CONTENT_COMMITMENT_SET(key_usage) ((key_usage)[0] & 0x2)
+
+/**
+ * @brief Test if the subject key can be used for encryption of key material.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_KEY_ENCIPHERMENT_SET(key_usage) ((key_usage)[0] & 0x4)
+
+/**
+ * @brief Test if the subject key can be used for encryption of arbitrary messages.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_DATA_ENCIPHERMENT_SET(key_usage) ((key_usage)[0] & 0x8)
+
+/**
+ * @brief Test if the subject key can be used for key agreement.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_KEY_AGREEMENT_SET(key_usage) ((key_usage)[0] & 0x10)
+
+/**
+ * @brief Test if the subject key can be used for signing certificates.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_KEY_CERT_SIGN_SET(key_usage) ((key_usage)[0] & 0x20)
+
+/**
+ * @brief Test if the subject key can be used for signing certificate revocation lists.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_CRL_SIGN_SET(key_usage) ((key_usage)[0] & 0x40)
+
+/**
+ * @brief Test if the subject key can be used only for enciphering data during key agreement.
+ *
+ * The key agreement flag must also be set.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_ENCIPHER_ONLY_SET(key_usage) ((key_usage)[0] & 0x80)
+
+/**
+ * @brief Test if the subject key can be used only for deciphering data during key agreement.
+ *
+ * The key agreement flag must also be set.
+ */
+#define N20_OPEN_DICE_KEY_USAGE_IS_DECIPHER_ONLY_SET(key_usage) ((key_usage)[1] & 0x1)
+
+/**
+ * @}
+ */
+
+struct n20_open_dice_cert_info_s {
+    n20_slice_t issuer;                                  // Issuer of the CWT
+    n20_slice_t subject;                                 // Subject of the CWT
+    n20_open_dice_input_t open_dice_input;               // OpenDICE input data
+    n20_open_dice_public_key_info_t subject_public_key;  // Public key of the subject
+    uint8_t key_usage[2];                                // Key usage flags
+};
+
+/**
+ * @brief Alias for @ref n20_open_dice_cert_info_s.
+ *
+ * This structure is used to hold the information about the OpenDICE certificate
+ * that is used in the CWT (CBOR Web Token) and X.509 extensions.
+ */
+typedef struct n20_open_dice_cert_info_s n20_open_dice_cert_info_t;
 
 #ifdef __cplusplus
 }

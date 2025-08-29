@@ -47,6 +47,7 @@ set(LIBNAT20_SOURCES
     src/core/asn1.c
     src/core/cbor.c
     src/core/cose.c
+    src/core/cwt.c
     src/core/oid.c
     src/core/stream.c
     src/core/x509_ext_open_dice_input.c
@@ -62,6 +63,7 @@ set(LIBNAT20_PUB_HEADERS
     include/nat20/asn1.h
     include/nat20/cbor.h
     include/nat20/cose.h
+    include/nat20/cwt.h
     include/nat20/crypto.h
     include/nat20/error.h
     include/nat20/oid.h
@@ -94,6 +96,7 @@ set(LIBNAT20_TEST_SOURCES
     src/core/test/asn1.cpp
     src/core/test/cbor.cpp
     src/core/test/cose.cpp
+    src/core/test/cwt.cpp
     src/core/test/oid.cpp
     src/core/test/stream.cpp
     src/core/test/test.cpp
