@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <getopt.h>
 #include <nat20/cbor.h>
 #include <nat20/cose.h>
 #include <nat20/crypto.h>
@@ -34,7 +35,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define SOCKET_PATH "/tmp/gnostic_n20_service.sock"
+#define DEFAULT_SOCKET_PATH "/tmp/gnostic_n20_service.sock"
 #define BACKLOG 1
 
 n20_error_t init_gnostic_node_with_bssl_crypto(n20_gnostic_node_state_t *node_state) {
@@ -103,7 +104,7 @@ static n20_error_t export_uds_public_key_as_cose(n20_gnostic_node_state_t *node_
 
     n20_crypto_key_t derived_key = NULL;
 
-    n20_error_t error = n20_derive_attestation_key(
+    n20_error_t error = n20_derive_cdi_attestation_key(
         node_state->crypto_context, uds_public_key, &derived_key, key_type);
     if (error != n20_error_ok_e) {
         return error;
@@ -261,10 +262,10 @@ n20_error_t dispatch_issue_cdi_cert_request(n20_gnostic_node_state_t *node_state
 }
 
 n20_error_t dispatch_issue_eca_cert_request(n20_gnostic_node_state_t *node_state,
-                                           uint8_t *response_buffer,
-                                           size_t *response_size_in_out,
-                                           n20_msg_issue_eca_cert_request_t *request,
-                                           size_t client_index) {
+                                            uint8_t *response_buffer,
+                                            size_t *response_size_in_out,
+                                            n20_msg_issue_eca_cert_request_t *request,
+                                            size_t client_index) {
 
     n20_compressed_input_t parent_path[N20_STATELESS_MAX_PATH_LENGTH];
     size_t parent_path_size = request->parent_path_length;
@@ -285,17 +286,15 @@ n20_error_t dispatch_issue_eca_cert_request(n20_gnostic_node_state_t *node_state
     size_t const total_buffer_size = *response_size_in_out;
 
     n20_error_t rc = n20_gnostic_issue_eca_certificate(node_state,
-                                                      client_index,
-                                                      request->parent_key_type,
-                                                      request->key_type,
-                                                      parent_path,
-                                                      parent_path_size,
-                                                      request->context,
-                                                      request->key_usage,
-                                                      request->challenge,
-                                                      request->certificate_format,
-                                                      response_buffer,
-                                                      response_size_in_out);
+                                                       client_index,
+                                                       request->parent_key_type,
+                                                       request->key_type,
+                                                       parent_path,
+                                                       parent_path_size,
+                                                       request->challenge,
+                                                       request->certificate_format,
+                                                       response_buffer,
+                                                       response_size_in_out);
     if (rc != n20_error_ok_e) {
         // Handle error: issuing ECA certificate failed
         return rc;
@@ -322,11 +321,73 @@ n20_error_t dispatch_issue_eca_cert_request(n20_gnostic_node_state_t *node_state
     return n20_error_ok_e;
 }
 
-n20_error_t dispatch_eca_sign_request(n20_gnostic_node_state_t *node_state,
-                                      uint8_t *response_buffer,
-                                      size_t *response_size_in_out,
-                                      n20_msg_eca_sign_request_t *request,
-                                      size_t client_index) {
+n20_error_t dispatch_issue_eca_ee_cert_request(n20_gnostic_node_state_t *node_state,
+                                               uint8_t *response_buffer,
+                                               size_t *response_size_in_out,
+                                               n20_msg_issue_eca_ee_cert_request_t *request,
+                                               size_t client_index) {
+
+    n20_compressed_input_t parent_path[N20_STATELESS_MAX_PATH_LENGTH];
+    size_t parent_path_size = request->parent_path_length;
+
+    if (parent_path_size > N20_STATELESS_MAX_PATH_LENGTH) {
+        // Handle error: parent path size exceeds maximum
+        return n20_error_parent_path_size_exceeds_max_e;
+    }
+
+    for (size_t i = 0; i < parent_path_size; ++i) {
+        if (request->parent_path[i].size != sizeof(n20_compressed_input_t)) {
+            // Handle error: invalid parent path size
+            return n20_error_incompatible_compressed_input_size_e;
+        }
+        memcpy(&parent_path[i], request->parent_path[i].buffer, sizeof(n20_compressed_input_t));
+    }
+
+    size_t const total_buffer_size = *response_size_in_out;
+
+    n20_error_t rc = n20_gnostic_issue_eca_ee_certificate(node_state,
+                                                          client_index,
+                                                          request->parent_key_type,
+                                                          request->key_type,
+                                                          parent_path,
+                                                          parent_path_size,
+                                                          request->name,
+                                                          request->key_usage,
+                                                          request->challenge,
+                                                          request->certificate_format,
+                                                          response_buffer,
+                                                          response_size_in_out);
+    if (rc != n20_error_ok_e) {
+        // Handle error: issuing ECA certificate failed
+        return rc;
+    }
+
+    if (*response_size_in_out > total_buffer_size) {
+        // Handle error: response size exceeds buffer size
+        return n20_error_insufficient_buffer_size_e;
+    }
+
+    n20_stream_t s;
+    n20_stream_init(&s, response_buffer, total_buffer_size - *response_size_in_out);
+
+    n20_cbor_write_header(&s, n20_cbor_type_bytes_e, *response_size_in_out);
+    n20_cbor_write_int(&s, 2);
+    n20_cbor_write_map_header(&s, 1);
+
+    if (n20_stream_has_buffer_overflow(&s)) {
+        return n20_error_insufficient_buffer_size_e;
+    }
+
+    *response_size_in_out += n20_stream_byte_count(&s);
+
+    return n20_error_ok_e;
+}
+
+n20_error_t dispatch_eca_ee_sign_request(n20_gnostic_node_state_t *node_state,
+                                         uint8_t *response_buffer,
+                                         size_t *response_size_in_out,
+                                         n20_msg_eca_ee_sign_request_t *request,
+                                         size_t client_index) {
 
     n20_compressed_input_t parent_path[N20_STATELESS_MAX_PATH_LENGTH];
     size_t parent_path_size = request->parent_path_length;
@@ -351,9 +412,8 @@ n20_error_t dispatch_eca_sign_request(n20_gnostic_node_state_t *node_state,
                                           request->key_type,
                                           parent_path,
                                           parent_path_size,
-                                          request->context,
+                                          request->name,
                                           request->key_usage,
-                                          request->challenge,
                                           request->message,
                                           response_buffer,
                                           response_size_in_out);
@@ -369,16 +429,12 @@ n20_error_t dispatch_eca_sign_request(n20_gnostic_node_state_t *node_state,
 
     // Prepare the response message
     // The signature is at the beginning of response_buffer
-    n20_msg_eca_sign_response_t response = {
+    n20_msg_eca_ee_sign_response_t response = {
         .error_code = n20_error_ok_e,
-        .signature = {
-            .buffer = response_buffer,
-            .size = *response_size_in_out
-        }
-    };
+        .signature = {.buffer = response_buffer, .size = *response_size_in_out}};
 
     *response_size_in_out = total_buffer_size;
-    return n20_msg_eca_sign_response_write(&response, response_buffer, response_size_in_out);
+    return n20_msg_eca_ee_sign_response_write(&response, response_buffer, response_size_in_out);
 }
 
 n20_error_t dispatch_message(n20_gnostic_node_state_t *node_state,
@@ -427,17 +483,24 @@ n20_error_t dispatch_message(n20_gnostic_node_state_t *node_state,
             break;
         case n20_msg_request_type_issue_eca_cert_e:
             error = dispatch_issue_eca_cert_request(node_state,
-                                                   response_buffer,
-                                                   response_size_in_out,
-                                                   &request.payload.issue_eca_cert,
-                                                   client_index);
+                                                    response_buffer,
+                                                    response_size_in_out,
+                                                    &request.payload.issue_eca_cert,
+                                                    client_index);
             break;
-        case n20_msg_request_type_eca_sign_e:
-            error = dispatch_eca_sign_request(node_state,
-                                             response_buffer,
-                                             response_size_in_out,
-                                             &request.payload.eca_sign,
-                                             client_index);
+        case n20_msg_request_type_issue_eca_ee_cert_e:
+            error = dispatch_issue_eca_ee_cert_request(node_state,
+                                                       response_buffer,
+                                                       response_size_in_out,
+                                                       &request.payload.issue_eca_ee_cert,
+                                                       client_index);
+            break;
+        case n20_msg_request_type_eca_ee_sign_e:
+            error = dispatch_eca_ee_sign_request(node_state,
+                                                 response_buffer,
+                                                 response_size_in_out,
+                                                 &request.payload.eca_ee_sign,
+                                                 client_index);
             break;
         default:
             // Handle unknown request type
@@ -507,7 +570,24 @@ static void print_uds_public_keys(n20_gnostic_node_state_t *node_state) {
     printf("\n");
 }
 
-int main(void /*int argc, char *argv[]*/) {
+int main(int argc, char *argv[]) {
+    /* Parse command line with the following usage:
+     * Use <binary name> --socket-path/-s <socket_path>
+     * using getopt_long.
+     */
+    char *socket_path = DEFAULT_SOCKET_PATH;
+    static struct option long_options[] = {{"socket-path", required_argument, 0, 'k'}};
+    int opt;
+    while ((opt = getopt_long(argc, argv, "s:", long_options, NULL)) != -1) {
+        switch (opt) {
+            case 's':
+                socket_path = optarg;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s --socket-path/-s <socket_path>\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
 
     // Initialize the gnostic node state and crypto context.
     init_gnostic_node_with_bssl_crypto(&service_node_state);
@@ -526,12 +606,12 @@ int main(void /*int argc, char *argv[]*/) {
     }
 
     // Remove any existing socket file
-    unlink(SOCKET_PATH);
+    unlink(socket_path);
 
     // Set up the address structure
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path) - 1);
 
     // Bind the socket
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) == -1) {
@@ -547,7 +627,7 @@ int main(void /*int argc, char *argv[]*/) {
         exit(EXIT_FAILURE);
     }
 
-    printf("Listening on %s\n", SOCKET_PATH);
+    printf("Listening on %s\n", socket_path);
 
     bool run = true;
 
@@ -596,7 +676,7 @@ int main(void /*int argc, char *argv[]*/) {
 
     // Cleanup
     close(server_fd);
-    unlink(SOCKET_PATH);
+    unlink(socket_path);
 
     return 0;
 }

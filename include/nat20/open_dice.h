@@ -369,12 +369,68 @@ typedef struct n20_open_dice_public_key_info_s n20_open_dice_public_key_info_t;
  * @}
  */
 
+/**
+ * @brief Enumeration of OpenDICE certificate types.
+ */
+enum n20_cert_type_s {
+    /**
+     * @brief Compound device identifier certificate.
+     *
+     * This certificate type is used for compound device identifiers
+     * and is associated with the OpenDICE protocol.
+     */
+    n20_cert_type_cdi_e = 0,
+    /**
+     * @brief Embedded certificate authority certificate.
+     *
+     * This certificate type is used for embedded certificate authorities
+     * and is associated with the OpenDICE protocol.
+     * ECA certificates are issued by the corresponding level CDI certificate
+     * and can be used to issue end-entity certificates.
+     */
+    n20_cert_type_eca_e = 1,
+    /**
+     * @brief Embedded certificate authority End-entity certificate.
+     *
+     * This certificate type is used for end-entity certificates
+     * issued by embedded certificate authorities.
+     * This certificate is issued by the corresponding level ECA certificate.
+     */
+    n20_cert_type_eca_ee_e = 2,
+};
+
+/**
+ * @brief Alias for @ref n20_cert_type_s.
+ */
+typedef enum n20_cert_type_s n20_cert_type_t;
+
+struct n20_cert_eca_s {
+    n20_slice_t nonce;                                 // Nonce of the ECA
+};
+
+typedef struct n20_cert_eca_s n20_cert_eca_t;
+
+struct n20_cert_eca_ee_s {
+    n20_slice_t nonce;                                 // Nonce of the ECA EE
+    n20_string_slice_t name;
+};
+
+typedef struct n20_cert_eca_ee_s n20_cert_eca_ee_t;
+
+/**
+ * @brief Structure to hold OpenDICE certificate information.
+ */
 struct n20_open_dice_cert_info_s {
     n20_slice_t issuer;                                  // Issuer of the CWT
     n20_slice_t subject;                                 // Subject of the CWT
-    n20_open_dice_input_t open_dice_input;               // OpenDICE input data
     n20_open_dice_public_key_info_t subject_public_key;  // Public key of the subject
     uint8_t key_usage[2];                                // Key usage flags
+    n20_cert_type_t cert_type;                           // Certificate type
+    union {
+        n20_open_dice_input_t open_dice_input;               // OpenDICE input data
+        n20_cert_eca_t eca;                                 // ECA specific data
+        n20_cert_eca_ee_t eca_ee;                           // ECA EE specific data
+    };
 };
 
 /**

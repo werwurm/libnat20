@@ -273,7 +273,7 @@ n20_error_t n20_msg_issue_cdi_cert_request_read_cb(n20_istream_t *istream,
                 return error;
             }
             break;
-        case 5: // certificate format
+        case 5:  // certificate format
             if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
                 cbor_type != n20_cbor_type_uint_e) {
                 // The certificate format must be an unsigned integer.
@@ -334,7 +334,7 @@ n20_error_t n20_msg_issue_eca_cert_request_read_cb(n20_istream_t *istream,
                 return error;
             }
             break;
-        case 4: // certificate format
+        case 4:  // certificate format
             if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
                 cbor_type != n20_cbor_type_uint_e) {
                 // The certificate format must be an unsigned integer.
@@ -342,25 +342,7 @@ n20_error_t n20_msg_issue_eca_cert_request_read_cb(n20_istream_t *istream,
             }
             request->certificate_format = (n20_certificate_format_t)cbor_value;
             break;
-        case 5: // context
-            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
-                cbor_type != n20_cbor_type_string_e) {
-                // The context must be a text string.
-                return n20_error_unexpected_message_structure_e;
-            }
-            request->context.size = cbor_value;
-            request->context.buffer = (char const *)n20_istream_get_slice(istream, cbor_value);
-            break;
-        case 6: // key_usage
-            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
-                cbor_type != n20_cbor_type_bytes_e) {
-                // The key usage must be a byte string.
-                return n20_error_unexpected_message_structure_e;
-            }
-            request->key_usage.size = cbor_value;
-            request->key_usage.buffer = n20_istream_get_slice(istream, cbor_value);
-            break;
-        case 7: // challenge
+        case 7:  // challenge
             if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
                 cbor_type != n20_cbor_type_bytes_e) {
                 // The challenge must be a byte string.
@@ -380,22 +362,111 @@ n20_error_t n20_msg_issue_eca_cert_request_read_cb(n20_istream_t *istream,
 
 n20_error_t n20_msg_issue_eca_cert_request_read(n20_istream_t *istream,
                                                 n20_msg_issue_eca_cert_request_t *request) {
-
     request->parent_path_length = 0;
     request->parent_key_type = n20_crypto_key_type_none_e;
     request->key_type = n20_crypto_key_type_none_e;
     request->certificate_format = n20_certificate_format_none_e;
-    request->context = N20_STR_NULL;
-    request->key_usage = N20_SLICE_NULL;
     request->challenge = N20_SLICE_NULL;
 
     return n20_msg_read_map_with_int_key(istream, n20_msg_issue_eca_cert_request_read_cb, request);
 }
 
-n20_error_t n20_msg_eca_sign_request_read_cb(n20_istream_t *istream,
-                                             int64_t key,
-                                             void *context) {
-    n20_msg_eca_sign_request_t *request = (n20_msg_eca_sign_request_t *)context;
+n20_error_t n20_msg_issue_eca_ee_cert_request_read_cb(n20_istream_t *istream,
+                                                      int64_t key,
+                                                      void *context) {
+    n20_msg_issue_eca_ee_cert_request_t *request = (n20_msg_issue_eca_ee_cert_request_t *)context;
+    n20_cbor_type_t cbor_type;
+    uint64_t cbor_value;
+    n20_error_t error;
+
+    switch (key) {
+        case 1:  // parent_key_type
+            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
+                cbor_type != n20_cbor_type_uint_e) {
+                // The parent key type must be an unsigned integer.
+                return n20_error_unexpected_message_structure_e;
+            }
+            request->parent_key_type = (n20_crypto_key_type_t)cbor_value;
+            break;
+        case 2:  // key_type
+            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
+                cbor_type != n20_cbor_type_uint_e) {
+                // The key type must be an unsigned integer.
+                return n20_error_unexpected_message_structure_e;
+            }
+            request->key_type = (n20_crypto_key_type_t)cbor_value;
+            break;
+        case 3:  // parent path
+            request->parent_path_length = N20_STATELESS_MAX_PATH_LENGTH;
+            error = n20_msg_compressed_context_array_read(
+                istream, request->parent_path, &request->parent_path_length);
+            if (error != n20_error_ok_e) {
+                return error;
+            }
+            break;
+        case 4:  // certificate format
+            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
+                cbor_type != n20_cbor_type_uint_e) {
+                // The certificate format must be an unsigned integer.
+                return n20_error_unexpected_message_structure_e;
+            }
+            request->certificate_format = (n20_certificate_format_t)cbor_value;
+            break;
+        case 5:  // name
+            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
+                cbor_type != n20_cbor_type_string_e) {
+                // The name must be a text string.
+                return n20_error_unexpected_message_structure_e;
+            }
+            request->name.size = cbor_value;
+            request->name.buffer = (char const *)n20_istream_get_slice(istream, cbor_value);
+            break;
+        case 6:  // key_usage
+            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
+                cbor_type != n20_cbor_type_bytes_e) {
+                // The key usage must be a byte string.
+                return n20_error_unexpected_message_structure_e;
+            }
+            request->key_usage.size = cbor_value;
+            request->key_usage.buffer = n20_istream_get_slice(istream, cbor_value);
+            break;
+        case 7:  // challenge
+            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
+                cbor_type != n20_cbor_type_bytes_e) {
+                // The challenge must be a byte string.
+                return n20_error_unexpected_message_structure_e;
+            }
+            request->challenge.size = cbor_value;
+            request->challenge.buffer = n20_istream_get_slice(istream, cbor_value);
+            break;
+        default:
+            // Skip unknown keys.
+            return n20_cbor_skip_item(istream) ? n20_error_ok_e
+                                               : n20_error_unexpected_message_structure_e;
+    }
+
+    return n20_error_ok_e;
+}
+
+n20_error_t n20_msg_issue_eca_ee_cert_request_read(n20_istream_t *istream,
+                                                   n20_msg_issue_eca_ee_cert_request_t *request) {
+
+    request->parent_path_length = 0;
+    request->parent_key_type = n20_crypto_key_type_none_e;
+    request->key_type = n20_crypto_key_type_none_e;
+    request->certificate_format = n20_certificate_format_none_e;
+    request->name = N20_STR_NULL;
+    request->key_usage = N20_SLICE_NULL;
+    request->challenge = N20_SLICE_NULL;
+
+    return n20_msg_read_map_with_int_key(
+        istream, n20_msg_issue_eca_ee_cert_request_read_cb, request);
+}
+
+n20_error_t n20_msg_eca_ee_sign_request_read_cb(n20_istream_t *istream,
+                                                int64_t key,
+                                                void *context) {
+    n20_msg_eca_ee_sign_request_t *request = (n20_msg_eca_ee_sign_request_t *)context;
     n20_cbor_type_t cbor_type;
     uint64_t cbor_value;
     n20_error_t error;
@@ -424,16 +495,16 @@ n20_error_t n20_msg_eca_sign_request_read_cb(n20_istream_t *istream,
                 return error;
             }
             break;
-        case 5: // context
+        case 5:  // name
             if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
                 cbor_type != n20_cbor_type_string_e) {
-                // The context must be a text string.
+                // The name must be a text string.
                 return n20_error_unexpected_message_structure_e;
             }
-            request->context.size = cbor_value;
-            request->context.buffer = (char const *)n20_istream_get_slice(istream, cbor_value);
+            request->name.size = cbor_value;
+            request->name.buffer = (char const *)n20_istream_get_slice(istream, cbor_value);
             break;
-        case 6: // key_usage
+        case 6:  // key_usage
             if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
                 cbor_type != n20_cbor_type_bytes_e) {
                 // The key usage must be a byte string.
@@ -442,16 +513,7 @@ n20_error_t n20_msg_eca_sign_request_read_cb(n20_istream_t *istream,
             request->key_usage.size = cbor_value;
             request->key_usage.buffer = n20_istream_get_slice(istream, cbor_value);
             break;
-        case 7: // challenge
-            if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
-                cbor_type != n20_cbor_type_bytes_e) {
-                // The challenge must be a byte string.
-                return n20_error_unexpected_message_structure_e;
-            }
-            request->challenge.size = cbor_value;
-            request->challenge.buffer = n20_istream_get_slice(istream, cbor_value);
-            break;
-        case 8: // message
+        case 8:  // message
             if (!n20_read_cbor_header(istream, &cbor_type, &cbor_value) ||
                 cbor_type != n20_cbor_type_bytes_e) {
                 // The message must be a byte string.
@@ -469,18 +531,17 @@ n20_error_t n20_msg_eca_sign_request_read_cb(n20_istream_t *istream,
     return n20_error_ok_e;
 }
 
-n20_error_t n20_msg_eca_sign_request_read(n20_istream_t *istream,
-                                          n20_msg_eca_sign_request_t *request) {
+n20_error_t n20_msg_eca_ee_sign_request_read(n20_istream_t *istream,
+                                             n20_msg_eca_ee_sign_request_t *request) {
 
     request->parent_path_length = 0;
     request->parent_key_type = n20_crypto_key_type_none_e;
     request->key_type = n20_crypto_key_type_none_e;
-    request->context = N20_STR_NULL;
+    request->name = N20_STR_NULL;
     request->key_usage = N20_SLICE_NULL;
-    request->challenge = N20_SLICE_NULL;
     request->message = N20_SLICE_NULL;
 
-    return n20_msg_read_map_with_int_key(istream, n20_msg_eca_sign_request_read_cb, request);
+    return n20_msg_read_map_with_int_key(istream, n20_msg_eca_ee_sign_request_read_cb, request);
 }
 
 n20_error_t n20_msg_request_read(n20_msg_request_t *request, n20_slice_t const msg_buffer) {
@@ -515,8 +576,11 @@ n20_error_t n20_msg_request_read(n20_msg_request_t *request, n20_slice_t const m
             return n20_msg_issue_cdi_cert_request_read(&istream, &request->payload.issue_cdi_cert);
         case n20_msg_request_type_issue_eca_cert_e:
             return n20_msg_issue_eca_cert_request_read(&istream, &request->payload.issue_eca_cert);
-        case n20_msg_request_type_eca_sign_e:
-            return n20_msg_eca_sign_request_read(&istream, &request->payload.eca_sign);
+        case n20_msg_request_type_issue_eca_ee_cert_e:
+            return n20_msg_issue_eca_ee_cert_request_read(&istream,
+                                                          &request->payload.issue_eca_ee_cert);
+        case n20_msg_request_type_eca_ee_sign_e:
+            return n20_msg_eca_ee_sign_request_read(&istream, &request->payload.eca_ee_sign);
         default:
             return n20_error_unrecognized_request_type_e;
     }
@@ -588,7 +652,7 @@ void n20_msg_issue_cdi_cert_request_write(n20_stream_t *s,
     int pairs = 4;
 
     n20_cbor_write_int(s, (uint64_t)request->certificate_format);  // certificate format
-    n20_cbor_write_int(s, 5);  // Key for certificate format
+    n20_cbor_write_int(s, 5);                                      // Key for certificate format
 
     if (request->parent_path_length > 0) {
         size_t i = request->parent_path_length;
@@ -617,29 +681,16 @@ void n20_msg_issue_eca_cert_request_write(n20_stream_t *s,
     int pairs = 3;
 
     // Count additional optional fields
-    if (request->challenge.size > 0) ++pairs;
-    if (request->key_usage.size > 0) ++pairs;
-    if (request->context.size > 0) ++pairs;
-    if (request->parent_path_length > 0) ++pairs;
 
     // Write fields in reverse order (because of reverse stream)
     if (request->challenge.size > 0) {
         n20_cbor_write_byte_string(s, request->challenge);
         n20_cbor_write_int(s, 7);  // Key for challenge
-    }
-
-    if (request->key_usage.size > 0) {
-        n20_cbor_write_byte_string(s, request->key_usage);
-        n20_cbor_write_int(s, 6);  // Key for key_usage
-    }
-
-    if (request->context.size > 0) {
-        n20_cbor_write_text_string(s, request->context);
-        n20_cbor_write_int(s, 5);  // Key for context
+        ++pairs;
     }
 
     n20_cbor_write_int(s, (uint64_t)request->certificate_format);  // certificate format
-    n20_cbor_write_int(s, 4);  // Key for certificate format
+    n20_cbor_write_int(s, 4);                                      // Key for certificate format
 
     if (request->parent_path_length > 0) {
         size_t i = request->parent_path_length;
@@ -649,6 +700,7 @@ void n20_msg_issue_eca_cert_request_write(n20_stream_t *s,
         } while (i != 0);
         n20_cbor_write_array_header(s, request->parent_path_length);
         n20_cbor_write_int(s, 3);  // Key for parent_path
+        ++pairs;
     }
 
     n20_cbor_write_int(s, (uint64_t)request->key_type);  // key type
@@ -659,33 +711,71 @@ void n20_msg_issue_eca_cert_request_write(n20_stream_t *s,
     n20_cbor_write_map_header(s, pairs);  // The request is a map with pairs key-value pairs.
 }
 
-void n20_msg_eca_sign_request_write(n20_stream_t *s,
-                                   n20_msg_eca_sign_request_t const *request) {
-    int pairs = 3;  // parent_key_type, key_type, message
+void n20_msg_issue_eca_ee_cert_request_write(n20_stream_t *s,
+                                             n20_msg_issue_eca_ee_cert_request_t const *request) {
+    int pairs = 3;
 
     // Count additional optional fields
-    if (request->challenge.size > 0) ++pairs;
-    if (request->key_usage.size > 0) ++pairs;
-    if (request->context.size > 0) ++pairs;
-    if (request->parent_path_length > 0) ++pairs;
 
     // Write fields in reverse order (because of reverse stream)
-    n20_cbor_write_byte_string(s, request->message);
-    n20_cbor_write_int(s, 8);  // Key for message
-    
     if (request->challenge.size > 0) {
         n20_cbor_write_byte_string(s, request->challenge);
         n20_cbor_write_int(s, 7);  // Key for challenge
+        ++pairs;
     }
 
     if (request->key_usage.size > 0) {
         n20_cbor_write_byte_string(s, request->key_usage);
         n20_cbor_write_int(s, 6);  // Key for key_usage
+        ++pairs;
     }
 
-    if (request->context.size > 0) {
-        n20_cbor_write_text_string(s, request->context);
-        n20_cbor_write_int(s, 5);  // Key for context
+    if (request->name.size > 0) {
+        n20_cbor_write_text_string(s, request->name);
+        n20_cbor_write_int(s, 5);  // Key for name
+        ++pairs;
+    }
+
+    n20_cbor_write_int(s, (uint64_t)request->certificate_format);  // certificate format
+    n20_cbor_write_int(s, 4);                                      // Key for certificate format
+
+    if (request->parent_path_length > 0) {
+        size_t i = request->parent_path_length;
+        do {
+            --i;
+            n20_cbor_write_byte_string(s, request->parent_path[i]);
+        } while (i != 0);
+        n20_cbor_write_array_header(s, request->parent_path_length);
+        n20_cbor_write_int(s, 3);  // Key for parent_path
+        ++pairs;
+    }
+
+    n20_cbor_write_int(s, (uint64_t)request->key_type);  // key type
+    n20_cbor_write_int(s, 2);                            // Key for key_type
+
+    n20_cbor_write_int(s, (uint64_t)request->parent_key_type);  // parent key type
+    n20_cbor_write_int(s, 1);                                   // Key for parent_key_type
+    n20_cbor_write_map_header(s, pairs);  // The request is a map with pairs key-value pairs.
+}
+
+void n20_msg_eca_ee_sign_request_write(n20_stream_t *s,
+                                       n20_msg_eca_ee_sign_request_t const *request) {
+    int pairs = 3;  // parent_key_type, key_type, message
+
+    // Write fields in reverse order (because of reverse stream)
+    n20_cbor_write_byte_string(s, request->message);
+    n20_cbor_write_int(s, 8);  // Key for message
+
+    if (request->key_usage.size > 0) {
+        n20_cbor_write_byte_string(s, request->key_usage);
+        n20_cbor_write_int(s, 6);  // Key for key_usage
+        ++pairs;
+    }
+
+    if (request->name.size > 0) {
+        n20_cbor_write_text_string(s, request->name);
+        n20_cbor_write_int(s, 5);  // Key for name
+        ++pairs;
     }
 
     if (request->parent_path_length > 0) {
@@ -696,6 +786,7 @@ void n20_msg_eca_sign_request_write(n20_stream_t *s,
         } while (i != 0);
         n20_cbor_write_array_header(s, request->parent_path_length);
         n20_cbor_write_int(s, 3);  // Key for parent_path
+        ++pairs;
     }
 
     n20_cbor_write_int(s, (uint64_t)request->key_type);  // key type
@@ -722,8 +813,11 @@ n20_error_t n20_msg_request_write(n20_msg_request_t const *request,
         case n20_msg_request_type_issue_eca_cert_e:
             n20_msg_issue_eca_cert_request_write(&stream, &request->payload.issue_eca_cert);
             break;
-        case n20_msg_request_type_eca_sign_e:
-            n20_msg_eca_sign_request_write(&stream, &request->payload.eca_sign);
+        case n20_msg_request_type_issue_eca_ee_cert_e:
+            n20_msg_issue_eca_ee_cert_request_write(&stream, &request->payload.issue_eca_ee_cert);
+            break;
+        case n20_msg_request_type_eca_ee_sign_e:
+            n20_msg_eca_ee_sign_request_write(&stream, &request->payload.eca_ee_sign);
             break;
         default:
             return n20_error_unrecognized_request_type_e;
@@ -742,10 +836,10 @@ n20_error_t n20_msg_request_write(n20_msg_request_t const *request,
                                                    : n20_error_ok_e;
 }
 
-n20_error_t n20_msg_issue_cdi_cert_response_read_cb(n20_istream_t *istream,
-                                                    int64_t key,
-                                                    void *context) {
-    n20_msg_issue_cdi_cert_response_t *response = (n20_msg_issue_cdi_cert_response_t *)context;
+n20_error_t n20_msg_issue_cert_response_read_cb(n20_istream_t *istream,
+                                                int64_t key,
+                                                void *context) {
+    n20_msg_issue_cert_response_t *response = (n20_msg_issue_cert_response_t *)context;
     n20_cbor_type_t cbor_type;
     uint64_t cbor_value;
 
@@ -776,8 +870,8 @@ n20_error_t n20_msg_issue_cdi_cert_response_read_cb(n20_istream_t *istream,
     return n20_error_ok_e;
 }
 
-n20_error_t n20_msg_issue_cdi_cert_response_read(n20_msg_issue_cdi_cert_response_t *response,
-                                                 n20_slice_t buffer) {
+n20_error_t n20_msg_issue_cert_response_read(n20_msg_issue_cert_response_t *response,
+                                             n20_slice_t buffer) {
     n20_istream_t istream;
     n20_istream_init(&istream, buffer.buffer, buffer.size);
 
@@ -785,13 +879,12 @@ n20_error_t n20_msg_issue_cdi_cert_response_read(n20_msg_issue_cdi_cert_response
     response->certificate.size = 0;
     response->certificate.buffer = NULL;
 
-    return n20_msg_read_map_with_int_key(
-        &istream, n20_msg_issue_cdi_cert_response_read_cb, response);
+    return n20_msg_read_map_with_int_key(&istream, n20_msg_issue_cert_response_read_cb, response);
 }
 
-n20_error_t n20_msg_issue_cdi_cert_response_write(n20_msg_issue_cdi_cert_response_t const *response,
-                                                  uint8_t *buffer,
-                                                  size_t *const buffer_size_in_out) {
+n20_error_t n20_msg_issue_cert_response_write(n20_msg_issue_cert_response_t const *response,
+                                              uint8_t *buffer,
+                                              size_t *const buffer_size_in_out) {
     n20_stream_t stream;
 
     if (buffer_size_in_out == NULL) {
@@ -885,11 +978,10 @@ n20_error_t n20_msg_error_response_write(n20_msg_error_response_t const *respons
                                                    : n20_error_ok_e;
 }
 
-
-n20_error_t n20_msg_eca_sign_response_read_cb(n20_istream_t *istream,
-                                              int64_t key,
-                                              void *context) {
-    n20_msg_eca_sign_response_t *response = (n20_msg_eca_sign_response_t *)context;
+n20_error_t n20_msg_eca_ee_sign_response_read_cb(n20_istream_t *istream,
+                                                 int64_t key,
+                                                 void *context) {
+    n20_msg_eca_ee_sign_response_t *response = (n20_msg_eca_ee_sign_response_t *)context;
     n20_cbor_type_t cbor_type;
     uint64_t cbor_value;
 
@@ -920,8 +1012,8 @@ n20_error_t n20_msg_eca_sign_response_read_cb(n20_istream_t *istream,
     return n20_error_ok_e;
 }
 
-n20_error_t n20_msg_eca_sign_response_read(n20_msg_eca_sign_response_t *response,
-                                           n20_slice_t buffer) {
+n20_error_t n20_msg_eca_ee_sign_response_read(n20_msg_eca_ee_sign_response_t *response,
+                                              n20_slice_t buffer) {
     n20_istream_t istream;
     n20_istream_init(&istream, buffer.buffer, buffer.size);
 
@@ -929,13 +1021,12 @@ n20_error_t n20_msg_eca_sign_response_read(n20_msg_eca_sign_response_t *response
     response->signature.size = 0;
     response->signature.buffer = NULL;
 
-    return n20_msg_read_map_with_int_key(
-        &istream, n20_msg_eca_sign_response_read_cb, response);
+    return n20_msg_read_map_with_int_key(&istream, n20_msg_eca_ee_sign_response_read_cb, response);
 }
 
-n20_error_t n20_msg_eca_sign_response_write(n20_msg_eca_sign_response_t const *response,
-                                            uint8_t *buffer,
-                                            size_t *const buffer_size_in_out) {
+n20_error_t n20_msg_eca_ee_sign_response_write(n20_msg_eca_ee_sign_response_t const *response,
+                                               uint8_t *buffer,
+                                               size_t *const buffer_size_in_out) {
     n20_stream_t stream;
 
     if (buffer_size_in_out == NULL) {

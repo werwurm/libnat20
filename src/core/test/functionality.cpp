@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "nat20/functionality.h"
+
 #include <gtest/gtest.h>
 #include <nat20/crypto_bssl/crypto.h>
 #include <nat20/testing/test_bssl_utils.h>
@@ -150,7 +152,7 @@ TEST_P(FunctionalityTest, TestOpenDiceAttestationCertificate) {
         std::unique_ptr<void, decltype(key_deleter)>(parent_attestation_key, key_deleter);
 
     ASSERT_EQ(n20_error_ok_e,
-              n20_derive_attestation_key(
+              n20_derive_cdi_attestation_key(
                   crypto_ctx, parent_secret, &parent_attestation_key, parent_key_type));
     ASSERT_NE(parent_attestation_key, nullptr);
 
@@ -204,15 +206,14 @@ TEST_P(FunctionalityTest, TestOpenDiceAttestationCertificate) {
     uint8_t attestation_certificate[2048] = {};
     size_t attestation_certificate_size = sizeof(attestation_certificate);
     ASSERT_EQ(n20_error_ok_e,
-              n20_opendice_attestation_key_and_certificate(crypto_ctx,
-                                                           parent_secret,
-                                                           parent_attestation_key,
-                                                           parent_key_type,
-                                                           key_type,
-                                                           &context,
-                                                           certificate_format,
-                                                           attestation_certificate,
-                                                           &attestation_certificate_size))
+              n20_issue_cdi_certificate(crypto_ctx,
+                                        parent_secret,
+                                        parent_key_type,
+                                        key_type,
+                                        &context,
+                                        certificate_format,
+                                        attestation_certificate,
+                                        &attestation_certificate_size))
         << "Expected buffer size: " << attestation_certificate_size;
 
     auto got_cert = std::vector<uint8_t>(

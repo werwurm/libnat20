@@ -69,6 +69,10 @@ enum n20_error_s {
     n20_error_write_position_overflow_e = 13,
     n20_error_incompatible_compressed_input_size_e = 14,
     n20_error_unsupported_certificate_format_e = 15,
+    n20_error_missing_public_key_buffer_e = 16,
+    n20_error_missing_public_key_buffer_size_e = 17,
+    n20_error_unexpected_null_input_e = 18,
+    n20_error_unsupported_certificate_type_e = 19,
     /**
      * @brief The crypto context given to an interface was invalid.
      *

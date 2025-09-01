@@ -140,7 +140,7 @@ typedef enum n20_certificate_format_s n20_certificate_format_t;
  * @return n20_error_t
  */
 extern n20_error_t n20_compress_input(n20_crypto_digest_context_t *crypto_ctx,
-                                      n20_open_dice_input_t const *input,
+                                      n20_open_dice_cert_info_t const *input,
                                       n20_compressed_input_t digest);
 
 /**
@@ -231,10 +231,10 @@ extern n20_error_t n20_next_level_cdi_attest(n20_crypto_context_t *crypto_ctx,
  *
  * @return n20_error_ok_e on success, or an error code on failure.
  */
-extern n20_error_t n20_derive_attestation_key(n20_crypto_context_t *crypto_ctx,
-                                              n20_crypto_key_t cdi_secret,
-                                              n20_crypto_key_t *derived,
-                                              n20_crypto_key_type_t key_type);
+extern n20_error_t n20_derive_cdi_attestation_key(n20_crypto_context_t *crypto_ctx,
+                                                  n20_crypto_key_t cdi_secret,
+                                                  n20_crypto_key_t *derived,
+                                                  n20_crypto_key_type_t key_type);
 
 /**
  * @brief Initializes the algorithm identifier structure.
@@ -313,16 +313,23 @@ extern n20_error_t n20_prepare_x509_cert(n20_open_dice_cert_info_t const *cert_i
  * The function returns @ref n20_error_ok_e on success, or an error
  * code on failure.
  */
-extern n20_error_t n20_opendice_attestation_key_and_certificate(
-    n20_crypto_context_t *crypto_ctx,
-    n20_crypto_key_t parent_secret,
-    n20_crypto_key_t parent_attestation_key,
-    n20_crypto_key_type_t parent_key_type,
-    n20_crypto_key_type_t key_type,
-    n20_open_dice_input_t const *context,
-    n20_certificate_format_t certificate_format,
-    uint8_t *attestation_certificate,
-    size_t *attestation_certificate_size);
+extern n20_error_t n20_issue_cdi_certificate(n20_crypto_context_t *crypto_ctx,
+                                             n20_crypto_key_t parent_secret,
+                                             n20_crypto_key_type_t parent_key_type,
+                                             n20_crypto_key_type_t key_type,
+                                             n20_open_dice_input_t const *context,
+                                             n20_certificate_format_t certificate_format,
+                                             uint8_t *attestation_certificate,
+                                             size_t *attestation_certificate_size);
+
+extern n20_error_t n20_issue_eca_certificate(n20_crypto_context_t *crypto_ctx,
+                                             n20_crypto_key_t parent_secret,
+                                             n20_crypto_key_type_t parent_key_type,
+                                             n20_crypto_key_type_t key_type,
+                                             n20_slice_t challenge,
+                                             n20_certificate_format_t certificate_format,
+                                             uint8_t *attestation_certificate,
+                                             size_t *attestation_certificate_size);
 
 /**
  * @brief Issues a new ECA attestation certificate.
@@ -354,18 +361,16 @@ extern n20_error_t n20_opendice_attestation_key_and_certificate(
  * @param attestation_certificate_size In/out parameter for buffer size.
  * @return n20_error_ok_e on success, or an error code on failure.
  */
-extern n20_error_t n20_eca_attestation_key_and_certificate(
-    n20_crypto_context_t *crypto_ctx,
-    n20_crypto_key_t parent_secret,
-    n20_crypto_key_t parent_attestation_key,
-    n20_crypto_key_type_t parent_key_type,
-    n20_crypto_key_type_t key_type,
-    n20_string_slice_t context,
-    n20_slice_t key_usage,
-    n20_slice_t challenge,
-    n20_certificate_format_t certificate_format,
-    uint8_t *attestation_certificate,
-    size_t *attestation_certificate_size);
+extern n20_error_t n20_issue_eca_ee_certificate(n20_crypto_context_t *crypto_ctx,
+                                                n20_crypto_key_t parent_secret,
+                                                n20_crypto_key_type_t parent_key_type,
+                                                n20_crypto_key_type_t key_type,
+                                                n20_string_slice_t name,
+                                                n20_slice_t key_usage,
+                                                n20_slice_t challenge,
+                                                n20_certificate_format_t certificate_format,
+                                                uint8_t *attestation_certificate,
+                                                size_t *attestation_certificate_size);
 
 /**
  * @brief Sign a message with an ECA key.
@@ -384,17 +389,25 @@ extern n20_error_t n20_eca_attestation_key_and_certificate(
  * @param signature_size In/out parameter for buffer size.
  * @return n20_error_ok_e on success, or an error code on failure.
  */
-extern n20_error_t n20_eca_sign_message(
-    n20_crypto_context_t *crypto_ctx,
-    n20_crypto_key_t parent_secret,
-    n20_crypto_key_type_t key_type,
-    n20_string_slice_t context,
-    n20_slice_t key_usage,
-    n20_slice_t challenge,
-    n20_slice_t message,
-    uint8_t *signature,
-    size_t *signature_size);
+extern n20_error_t n20_eca_sign_message(n20_crypto_context_t *crypto_ctx,
+                                        n20_crypto_key_t parent_secret,
+                                        n20_crypto_key_type_t key_type,
+                                        n20_string_slice_t context,
+                                        n20_slice_t key_usage,
+                                        n20_slice_t message,
+                                        uint8_t *signature,
+                                        size_t *signature_size);
 
+extern n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
+                                                   n20_crypto_key_t issuer_cdi,
+                                                   n20_open_dice_cert_info_t const *context,
+                                                   n20_crypto_key_type_t const issuer_key_type,
+                                                   n20_crypto_key_type_t const subject_key_type,
+                                                   n20_crypto_key_t *issuer_key_out,
+                                                   n20_cdi_id_t issuer_serial_number_out,
+                                                   n20_cdi_id_t subject_serial_number_out,
+                                                   uint8_t *subject_public_key_buffer_out,
+                                                   size_t *subject_public_key_buffer_size_in_out);
 #ifdef __cplusplus
 }
 #endif

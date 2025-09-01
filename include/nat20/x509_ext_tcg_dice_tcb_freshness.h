@@ -28,30 +28,6 @@ extern "C" {
 #endif
 
 /**
- * @brief TCG DICE TCB Freshness X509 extension context.
- *
- * This is the context expected by
- * @ref n20_x509_ext_tcg_dice_tcb_freshness_content.
- * An instance of this object must be passed to the callback.
- * This is typically done using @ref n20_x509_extension by
- * initializing @ref n20_x509_extension_t.content_cb with
- * @ref n20_x509_ext_tcg_dice_tcb_freshness_content and setting
- * @ref n20_x509_extension_t.context to an instance of this
- * struct.
- *
- * (See TCG DICE Attestation Architecture Version 1.1, Section 6.3.)
- * @sa OID_TCG_DICE_TCB_FRESHNESS
- */
-struct n20_x509_ext_tcg_dice_tcb_freshness_s {
-    /**
-     * @brief  Nonce used as the freshness indicator.
-     *
-     * If nonce.buffer is NULL, the nonce is not rendered in the extension.
-     */
-    n20_slice_t nonce;
-};
-
-/**
  * @brief Alias for @ref n20_x509_ext_tcg_dice_tcb_freshness_s
  */
 typedef struct n20_x509_ext_tcg_dice_tcb_freshness_s n20_x509_ext_tcg_dice_tcb_freshness_t;
@@ -60,11 +36,13 @@ typedef struct n20_x509_ext_tcg_dice_tcb_freshness_s n20_x509_ext_tcg_dice_tcb_f
  * @brief Renders the value of a TCG DICE TCB Freshness X509 extension.
  *
  * The function expects a pointer to an instance of
- * @ref n20_x509_ext_tcg_dice_tcb_freshness_t as @p context argument.
+ * @ref n20_slice_t as @p context argument.
  *
- * If @p context is NULL, nothing is rendered, which would leave the resulting TCG DICE TCB
- * Freshness extension malformed.
+ * If @p context is NULL, or if @p context->buffer is NULL, nothing is rendered,
+ * which would leave the resulting TCG DICE TCB Freshness extension malformed.
  *
+ * (See TCG DICE Attestation Architecture Version 1.1, Section 6.3.)
+ * @sa OID_TCG_DICE_TCB_FRESHNESS
  * This function is typically not used directly but instead
  * passed to @ref n20_x509_extension by initializing an
  * instance of @ref n20_x509_extensions_t
