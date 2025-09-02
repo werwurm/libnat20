@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-#include "nat20/x509_ext_tcg_dice_tcb_freshness.h"
-
 #include <gtest/gtest.h>
+#include <nat20/oid.h>
+#include <nat20/types.h>
+#include <nat20/x509.h>
+#include <nat20/x509_ext_tcg_dice_tcb_freshness.h>
 
 #include <cstdint>
 #include <cstring>
 #include <optional>
 #include <tuple>
 #include <vector>
-
-#include "nat20/oid.h"
-#include "nat20/x509.h"
 
 class X509ExtTcgTcbFreshnessTest
     : public testing::TestWithParam<
@@ -69,15 +68,11 @@ INSTANTIATE_TEST_CASE_P(TcgTcbFreshnessEncoding,
 
 TEST_P(X509ExtTcgTcbFreshnessTest, TcgTcbFreshnessEncoding) {
     auto [optional_nonce, expected] = GetParam();
-    n20_x509_ext_tcg_dice_tcb_freshness_t freshness;
-    std::memset(&freshness, 0, sizeof(freshness));
+    n20_slice_t freshness = N20_SLICE_NULL;
 
     if (optional_nonce.has_value()) {
-        freshness.nonce.buffer = optional_nonce.value().data();
-        freshness.nonce.size = optional_nonce.value().size();
-    } else {
-        freshness.nonce.buffer = nullptr;
-        freshness.nonce.size = 0;
+        freshness.buffer = optional_nonce.value().data();
+        freshness.size = optional_nonce.value().size();
     }
 
     n20_x509_extension_t extensions[] = {
