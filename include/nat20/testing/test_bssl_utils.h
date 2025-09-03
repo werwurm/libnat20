@@ -21,6 +21,7 @@
 #include <nat20/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
+
 #include <string>
 
 #define MAKE_PTR(name) using name##_PTR_t = bssl::UniquePtr<name>
