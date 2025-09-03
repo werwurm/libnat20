@@ -74,7 +74,9 @@ std::string hexdump_side_by_side(std::string const& label_a,
     size_t max_size = a.size() > b.size() ? a.size() : b.size();
     s << std::hex;
 
-    s << "      " << label_a << std::string(52 - label_a.size(), ' ') << label_b << "\n";
+    // Column offset for column header alignment.
+    constexpr size_t column_offset = 52;
+    s << "      " << label_a << std::string(column_offset - label_a.size(), ' ') << label_b << "\n";
 
     size_t lines = (max_size + 15) / 16;
     for (size_t line = 0; line < lines; ++line) {

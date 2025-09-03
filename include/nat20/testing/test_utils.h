@@ -48,6 +48,8 @@ std::string hex(std::vector<uint8_t> const& data);
 /**
  * @brief Convert a byte vector to a C-style array string.
  *
+ * This is a utility function for generating a C-style array representation of a byte vector.
+ *
  * @param data The byte vector to convert.
  * @return std::string A string representation of the byte vector as a C-style array.
  */
