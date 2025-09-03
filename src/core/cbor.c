@@ -217,4 +217,3 @@ bool n20_cbor_read_skip_item(n20_istream_t *const s) {
 
     return true;
 }
-
