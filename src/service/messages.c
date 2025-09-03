@@ -36,10 +36,14 @@ n20_error_t n20_msg_read_map_with_int_key(n20_istream_t *istream,
     }
 
     for (uint64_t i = 0; i < map_size; ++i) {
-        if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
-            (cbor_type != n20_cbor_type_uint_e && cbor_type != n20_cbor_type_nint_e)) {
+        if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value)) {
+            return n20_error_unexpected_message_structure_e;
+        }
+        if ((cbor_type != n20_cbor_type_uint_e && cbor_type != n20_cbor_type_nint_e)) {
             // The key must be an integer (either unsigned or negative).
-            n20_cbor_read_skip_item(istream);
+            if (!n20_cbor_read_skip_item(istream)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             continue;
         }
         int64_t key =
@@ -751,7 +755,7 @@ void n20_msg_issue_eca_ee_cert_request_write(n20_stream_t *s,
 
 void n20_msg_eca_ee_sign_request_write(n20_stream_t *s,
                                        n20_msg_eca_ee_sign_request_t const *request) {
-    int pairs = 3;  // issuer_key_type, key_type, message
+    int pairs = 2;  // key_type, message
 
     // Write fields in reverse order (because of reverse stream)
     n20_cbor_write_byte_string(s, request->message);
