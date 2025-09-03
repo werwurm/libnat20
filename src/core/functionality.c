@@ -370,10 +370,10 @@ void n20_func_key_usage_open_dice_to_x509(n20_open_dice_cert_info_t const *cert_
 }
 
 n20_error_t n20_issue_x509_cert(n20_open_dice_cert_info_t const *cert_info,
-                                  n20_signer_t *signer,
-                                  n20_crypto_key_type_t issuer_key_type,
-                                  uint8_t *certificate,
-                                  size_t *certificate_size) {
+                                n20_signer_t *signer,
+                                n20_crypto_key_type_t issuer_key_type,
+                                uint8_t *certificate,
+                                size_t *certificate_size) {
     n20_error_t err = n20_error_ok_e;
     n20_x509_ext_key_usage_t key_usage = {0};
     n20_x509_tbs_t tbs = {0};
@@ -870,14 +870,14 @@ n20_error_t n20_issue_certificate(n20_crypto_context_t *crypto_ctx,
     switch (certificate_format_in) {
         case n20_certificate_format_x509_e:
             err = n20_issue_x509_cert(cert_info_in,
-                                        &(n20_signer_t){
-                                            .crypto_ctx = crypto_ctx,
-                                            .signing_key = signing_key,
-                                            .cb = n20_signer_callback,
-                                        },
-                                        issuer_key_type_in,
-                                        certificate_out,
-                                        certificate_size_in_out);
+                                      &(n20_signer_t){
+                                          .crypto_ctx = crypto_ctx,
+                                          .signing_key = signing_key,
+                                          .cb = n20_signer_callback,
+                                      },
+                                      issuer_key_type_in,
+                                      certificate_out,
+                                      certificate_size_in_out);
             break;
         default:
             err = n20_error_unsupported_certificate_format_e;

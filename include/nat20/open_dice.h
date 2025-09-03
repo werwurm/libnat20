@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <nat20/types.h>
 #include <nat20/crypto.h>
+#include <nat20/types.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -139,8 +139,7 @@ TEST_P(FunctionalityX509Test, IssueX509CertificateTest) {
 
     if (cert_type == n20_cert_type_eca_ee_e) {
         ASSERT_EQ(n20_error_ok_e,
-                  n20_derive_eca_key(
-                      crypto_ctx, issuer_secret, &issuer_key, issuer_key_type));
+                  n20_derive_eca_key(crypto_ctx, issuer_secret, &issuer_key, issuer_key_type));
         ASSERT_NE(issuer_key, nullptr);
 
     } else {
