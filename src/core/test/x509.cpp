@@ -18,40 +18,11 @@
 #include <nat20/asn1.h>
 #include <nat20/crypto.h>
 #include <nat20/crypto_bssl/crypto.h>
-#include <nat20/oid.h>
+#include <nat20/testing/test_bssl_utils.h>
 #include <nat20/testing/test_utils.h>
 #include <nat20/x509.h>
-#include <openssl/base.h>
-#include <openssl/digest.h>
-#include <openssl/ec.h>
-#include <openssl/ec_key.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/hkdf.h>
-#include <openssl/mem.h>
-#include <openssl/nid.h>
 #include <openssl/pki/verify.h>
 #include <openssl/x509.h>
-
-#include <memory>
-#include <ostream>
-#include <vector>
-
-#define MAKE_PTR(name) using name##_PTR_t = bssl::UniquePtr<name>
-
-MAKE_PTR(EVP_PKEY);
-MAKE_PTR(EVP_PKEY_CTX);
-MAKE_PTR(EVP_MD_CTX);
-MAKE_PTR(BIO);
-MAKE_PTR(X509);
-MAKE_PTR(EC_KEY);
-
-std::string BsslError() {
-    char buffer[2000];
-    auto error = ERR_get_error();
-    ERR_error_string_n(error, buffer, 2000);
-    return std::string(buffer);
-}
 
 uint8_t const test_cdi[] = {
     0xa4, 0x32, 0xb4, 0x34, 0x94, 0x4f, 0x59, 0xcf, 0xdb, 0xf7, 0x04, 0x46, 0x95, 0x9c, 0xee, 0x08,
@@ -566,52 +537,6 @@ INSTANTIATE_TEST_CASE_P(
                        .params = {.variant = n20_x509_pv_ec_curve_e, .ec_curve = &OID_SECP384R1},
                    },
                    true)));
-
-EVP_PKEY_PTR_t n20_crypto_key_to_evp_pkey_ptr(n20_crypto_key_type_s key_type,
-                                              uint8_t* public_key,
-                                              size_t public_key_size) {
-    switch (key_type) {
-        case n20_crypto_key_type_ed25519_e: {
-            auto key = EVP_PKEY_PTR_t(
-                EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, public_key, public_key_size));
-            if (!key) {
-                ADD_FAILURE();
-                return nullptr;
-            }
-
-            return key;
-        }
-        case n20_crypto_key_type_secp256r1_e:
-        case n20_crypto_key_type_secp384r1_e: {
-            auto ec_key = EC_KEY_PTR_t(EC_KEY_new_by_curve_name(
-                key_type == n20_crypto_key_type_secp256r1_e ? NID_X9_62_prime256v1
-                                                            : NID_secp384r1));
-            if (!ec_key) {
-                ADD_FAILURE();
-                return nullptr;
-            }
-
-            auto ec_key_p = ec_key.get();
-            uint8_t const* p = public_key;
-            if (!o2i_ECPublicKey(&ec_key_p, &p, public_key_size)) {
-                ADD_FAILURE();
-                return nullptr;
-            }
-
-            auto key = EVP_PKEY_PTR_t(EVP_PKEY_new());
-            if (!key || !EVP_PKEY_assign_EC_KEY(key.get(), ec_key.release())) {
-                ADD_FAILURE();
-                return nullptr;
-            }
-
-            return key;
-        }
-        default: {
-            ADD_FAILURE();
-            return nullptr;
-        }
-    }
-}
 
 typedef struct n20_x509_rs_s {
     uint8_t const* signature;

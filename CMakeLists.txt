@@ -122,11 +122,13 @@ set(LIBNAT20_CRYPTO_TEST_SOURCES
 )
 
 set(LIBNAT20_TEST_UTILS_HEADERS
+    include/nat20/testing/test_bssl_utils.h
     include/nat20/testing/test_utils.h
     include/nat20/testing/test_vector_reader.h
 )
 
 set(LIBNAT20_TEST_UTILS_SOURCES
+    src/testing/test_bssl_utils.cpp
     src/testing/test_utils.cpp
     src/testing/test_vector_reader.cpp
 )
@@ -252,6 +254,7 @@ if (NAT20_WITH_TESTS)
         PRIVATE ${LIBNAT20_TEST_UTILS_SOURCES}
         INTERFACE ${LIBNAT20_TEST_UTILS_HEADERS}
     )
+    target_link_libraries(nat20_test_utils gtest_main nat20 crypto)
     target_include_directories(nat20_test_utils
         PUBLIC include
     )
