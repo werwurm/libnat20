@@ -21,12 +21,11 @@
 
 static void n20_x509_ext_tcg_dice_tcb_freshness_sequence_content(n20_stream_t *const s,
                                                                  void *context) {
-    n20_x509_ext_tcg_dice_tcb_freshness_t const *const tcg_dice_tcb_freshness =
-        (n20_x509_ext_tcg_dice_tcb_freshness_t const *)context;
+    n20_slice_t const *const nonce = (n20_slice_t const *)context;
 
-    // tcg_dice_tcb_freshness is never NULL since it's checked by
-    // n20_x509_ext_tcg_dice_tcb_freshness_content.
-    n20_asn1_octetstring(s, &tcg_dice_tcb_freshness->nonce, n20_asn1_tag_info_no_override());
+    /* nonce is never NULL because it is checked by
+     * n20_x509_ext_tcg_dice_tcb_freshness_content. */
+    n20_asn1_octetstring(s, nonce, n20_asn1_tag_info_no_override());
 }
 
 void n20_x509_ext_tcg_dice_tcb_freshness_content(n20_stream_t *const s, void *context) {
