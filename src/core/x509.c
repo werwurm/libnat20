@@ -312,8 +312,12 @@ void n20_x509_cert_content(n20_stream_t *const s, void *context) {
         return;
     }
 
-    if (n20_asn1_oid_equals(x509->signature_algorithm.oid, &OID_ECDSA_WITH_SHA256) ||
-        n20_asn1_oid_equals(x509->signature_algorithm.oid, &OID_ECDSA_WITH_SHA384)) {
+    /* If signature == NULL or signature_bits == 0 rendering
+     * is delegated to n20_asn1_bitstring which will render an
+     * empty bit string regardless of the signature algorithm type. */
+    if (x509->signature != NULL && x509->signature_bits > 0 &&
+        (n20_asn1_oid_equals(x509->signature_algorithm.oid, &OID_ECDSA_WITH_SHA256) ||
+         n20_asn1_oid_equals(x509->signature_algorithm.oid, &OID_ECDSA_WITH_SHA384))) {
         // ECDSA with SHA-256 or SHA-384
         size_t mark = n20_stream_byte_count(s);
         size_t coordinate_size = x509->signature_bits / 16;
