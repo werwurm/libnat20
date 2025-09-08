@@ -271,12 +271,11 @@ typedef struct n20_istream_s {
  * @brief Initialize an @ref n20_istream_t structure.
  *
  * Initializes a structure of @ref n20_istream_t.
- * It is safe to call this function with `buffer == NULL`.
- * In this case the `buffer_size` parameter is effectively ignored
- * and the stream will merely count the bytes written
- * to it, which can be used for calculating a buffer size hint.
- * If `buffer` is given it must point to a buffer of at least
- * `buffer_size` bytes, or an out of bounds write will occur.
+ * It is safe to call this function with `buffer == NULL` or
+ * `buffer_size == 0`. In this case the buffer_underrun field is
+ * set to true and all subsequent calls to `n20_istream_read`,
+ * or `n20_istream_get` will return false and `n20_istream_get_slice`
+ * will return NULL.
  *
  * ## Ownership and life time
  *
@@ -302,6 +301,10 @@ extern void n20_istream_init(n20_istream_t *s, uint8_t const *buffer, size_t buf
  * @note The function does not check for buffer overflows in the provided
  * buffer. It is the caller's responsibility to ensure that the buffer is
  * dereferenceable and that it is at least `buffer_size` bytes long.
+ * If @p buffer is NULL the behavior is undefined.
+ *
+ * If @p s was not initialized with @ref n20_istream_init the behavior
+ * is undefined.
  *
  * @param s The input stream to read from.
  * @param buffer The buffer to store the read data.
@@ -319,8 +322,11 @@ extern bool n20_istream_read(n20_istream_t *s, uint8_t *buffer, size_t buffer_si
  * buffer remains unmodified. In this case, the function returns `false`.
  *
  * @note The function does not check for buffer overflows in the provided
- * uint_t variable. It is the caller's responsibility to ensure that the
+ * @p c parameter. It is the caller's responsibility to ensure that the
  * variable is dereferenceable.
+ *
+ * If @p s was not initialized with @ref n20_istream_init the behavior
+ * is undefined.
  *
  * @param s The input stream to read from.
  * @param c Pointer to a variable where the read byte will be stored.
@@ -332,6 +338,12 @@ extern bool n20_istream_get(n20_istream_t *s, uint8_t *c);
  *
  * This function advances the read position of the input stream by the
  * specified size and returns a slice of the input stream buffer.
+ *
+ * If @p size exceeds the data available in the stream, the function
+ * returns NULL.
+ *
+ * If @p s was not initialized with @ref n20_istream_init the behavior
+ * is undefined.
  *
  * @param s The input stream to read from.
  * @param size The size of the slice to read.
@@ -347,6 +359,9 @@ extern uint8_t const *n20_istream_get_slice(n20_istream_t *s, size_t size);
  * underrun, which occurs when a read operation exceeds the available data
  * in the stream.
  *
+ * If @p s was not initialized with @ref n20_istream_init the behavior
+ * is undefined.
+ *
  * @param s The input stream to check.
  * @return `true` if a buffer underrun has occurred, `false` otherwise.
  */
@@ -357,6 +372,9 @@ extern bool n20_istream_has_buffer_underrun(n20_istream_t const *s);
  *
  * This function returns the current read position in the input stream.
  * If the stream is `NULL`, it returns 0.
+ *
+ * If @p s was not initialized with @ref n20_istream_init the behavior
+ * is undefined.
  *
  * @param s The input stream to query.
  * @return The current read position, or 0 if the stream is `NULL`.

@@ -144,7 +144,14 @@ TEST_F(IStreamTest, InitWithNullBuffer) {
     EXPECT_EQ(stream.begin, nullptr);
     EXPECT_EQ(stream.size, 100);
     EXPECT_EQ(stream.read_position, 0);
-    EXPECT_FALSE(stream.buffer_underrun);
+    EXPECT_TRUE(stream.buffer_underrun);
+
+    uint8_t read_buffer[4];
+    EXPECT_FALSE(n20_istream_read(&stream, read_buffer, sizeof(read_buffer)));
+    EXPECT_FALSE(n20_istream_get(&stream, &read_buffer[0]));
+    EXPECT_EQ(n20_istream_get_slice(&stream, 4), nullptr);
+    EXPECT_EQ(n20_istream_read_position(&stream), 0);
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
 }
 
 TEST_F(IStreamTest, InitWithNullStream) {
