@@ -136,46 +136,6 @@ bool n20_cbor_read_header(n20_istream_t *const s, n20_cbor_type_t *const type, u
     return true;
 }
 
-bool n20_cbort_read_iterate_item(n20_istream_t *const s) {
-    n20_cbor_type_t type = n20_cbor_type_none_e;
-    uint64_t n = 0;
-    if (!n20_cbor_read_header(s, &type, &n)) {
-        return false;
-    }
-
-    switch (type) {
-        case n20_cbor_type_array_e:
-            for (size_t i = 0; i < n; i++) {
-                if (!n20_cbort_read_iterate_item(s)) {
-                    return false;
-                }
-            }
-            break;
-        case n20_cbor_type_map_e:
-            for (size_t i = 0; i < n; i++) {
-                if (!n20_cbort_read_iterate_item(s)) {
-                    return false;
-                }
-                if (!n20_cbort_read_iterate_item(s)) {
-                    return false;
-                }
-            }
-            break;
-        case n20_cbor_type_bytes_e:
-        case n20_cbor_type_string_e: {
-            uint8_t const *slice = n20_istream_get_slice(s, n);
-            if (slice == NULL) {
-                return false;
-            }
-            break;
-        }
-        default:
-            break;
-    }
-
-    return true;
-}
-
 bool n20_cbor_read_skip_item(n20_istream_t *const s) {
     n20_cbor_type_t type = n20_cbor_type_none_e;
     uint64_t n = 0;

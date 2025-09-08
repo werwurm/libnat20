@@ -205,12 +205,6 @@ extern void n20_cbor_write_byte_string(n20_stream_t *s, n20_slice_t const data);
  */
 extern void n20_cbor_write_text_string(n20_stream_t *s, n20_string_slice_t const text);
 
-extern bool n20_cbor_read_header(n20_istream_t *const s,
-                                 n20_cbor_type_t *const type,
-                                 uint64_t *const n);
-
-extern bool n20_cbor_read_skip_item(n20_istream_t *const s);
-
 /**
  * @brief Write a CBOR array header to the given stream.
  *
@@ -230,6 +224,33 @@ extern void n20_cbor_write_array_header(n20_stream_t *s, size_t size);
  * @param size The number of key-value pairs in the map.
  */
 extern void n20_cbor_write_map_header(n20_stream_t *s, size_t size);
+
+/**
+ * @brief Read a CBOR header from the given stream.
+ *
+ * This function reads the CBOR header for a given type and value from the stream.
+ *
+ * @param s The stream to read from.
+ * @param type The CBOR type (see @ref n20_cbor_type_t).
+ * @param n The value associated with the CBOR type.
+ * @return true if the header was read successfully, false otherwise.
+ */
+extern bool n20_cbor_read_header(n20_istream_t *s, n20_cbor_type_t *type, uint64_t *n);
+
+/**
+ * @brief Advance the read position of a stream past the next CBOR item.
+ *
+ * This function parses a CBOR item and advances the read position
+ * past the item. If the item has tags or has a nested structure, like
+ * an array or map, it will also advance past those structures.
+ *
+ * This function will skip past any CBOR structure, however, it does not
+ * support indefinite length items.
+ *
+ * @param s The stream to read from.
+ * @return true if the item was skipped successfully, false otherwise.
+ */
+extern bool n20_cbor_read_skip_item(n20_istream_t *const s);
 
 #ifdef __cplusplus
 }
