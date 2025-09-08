@@ -82,7 +82,7 @@ typedef uint8_t n20_compressed_input_t[N20_FUNC_COMPRESSED_INPUT_SIZE];
  * certificates in the OpenDICE framework.
  *
  * The numbers are used in communication protocols to identify
- * the requested certificate format. So they must be stable.
+ * the requested certificate format. Therefore, they must be stable.
  */
 enum n20_certificate_format_s {
     /**
@@ -241,7 +241,7 @@ extern n20_error_t n20_derive_cdi_attestation_key(n20_crypto_context_t *crypto_c
  * provided parameters. The derived key is returned in the given buffer.
  *
  * It works similar to @ref n20_derive_cdi_attestation_key, but it uses
- * a different tag make the key space disjoint from the cdi attestation
+ * a different tag to make the key space disjoint from the cdi attestation
  * key space.
  *
  * @param crypto_ctx The crypto context.
@@ -279,14 +279,12 @@ extern n20_error_t n20_init_algorithm_identifier(
  * @param key_info The key info structure to initialize.
  * @param key_type The type of the key.
  * @param public_key The public key to use.
- * @param public_key_size The size of the public key.
  *
  * @return n20_error_ok_e on success, or an error code on failure.
  */
 extern n20_error_t n20_init_key_info(n20_x509_public_key_info_t *key_info,
                                      n20_crypto_key_type_t key_type,
-                                     uint8_t const *public_key,
-                                     size_t public_key_size);
+                                     n20_slice_t const *public_key);
 
 /**
  * @brief Callback function type for signing operations.
@@ -388,14 +386,14 @@ extern n20_error_t n20_issue_x509_cert(n20_open_dice_cert_info_t const *cert_inf
  * @param signature_size In/out parameter for buffer size.
  * @return n20_error_ok_e on success, or an error code on failure.
  */
-extern n20_error_t n20_eca_sign_message(n20_crypto_context_t *crypto_ctx,
-                                        n20_crypto_key_t parent_secret,
-                                        n20_crypto_key_type_t key_type,
-                                        n20_string_slice_t name,
-                                        n20_slice_t key_usage,
-                                        n20_slice_t message,
-                                        uint8_t *signature,
-                                        size_t *signature_size);
+extern n20_error_t n20_eca_ee_sign_message(n20_crypto_context_t *crypto_ctx,
+                                           n20_crypto_key_t parent_secret,
+                                           n20_crypto_key_type_t key_type,
+                                           n20_string_slice_t name,
+                                           n20_slice_t key_usage,
+                                           n20_slice_t message,
+                                           uint8_t *signature,
+                                           size_t *signature_size);
 
 /**
  * @brief Computes cryptographic artifacts for a certificate.

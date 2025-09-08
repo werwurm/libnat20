@@ -301,8 +301,7 @@ n20_error_t n20_init_algorithm_identifier(n20_x509_algorithm_identifier_t *algor
  */
 n20_error_t n20_init_key_info(n20_x509_public_key_info_t *key_info,
                               n20_crypto_key_type_t key_type,
-                              uint8_t const *public_key,
-                              size_t public_key_size) {
+                              n20_slice_t const *public_key) {
     switch (key_type) {
         case n20_crypto_key_type_ed25519_e:
             key_info->algorithm_identifier.oid = &OID_ED25519;
@@ -322,8 +321,8 @@ n20_error_t n20_init_key_info(n20_x509_public_key_info_t *key_info,
             /* The key type is not supported. */
             return n20_error_crypto_invalid_key_type_e;
     }
-    key_info->public_key_bits = public_key_size * 8;
-    key_info->public_key = public_key;
+    key_info->public_key_bits = public_key->size * 8;
+    key_info->public_key = public_key->buffer;
 
     return n20_error_ok_e;
 }
@@ -423,6 +422,7 @@ n20_error_t n20_issue_x509_cert(n20_open_dice_cert_info_t const *cert_info,
                     .context = (void *)&cert_info->eca_ee.nonce,
                 };
             }
+            break;
         case n20_cert_type_self_signed_e:
             break;
     }
@@ -454,8 +454,7 @@ n20_error_t n20_issue_x509_cert(n20_open_dice_cert_info_t const *cert_info,
 
     err = n20_init_key_info(&tbs.subject_public_key_info,
                             cert_info->subject_public_key.algorithm,
-                            cert_info->subject_public_key.key.buffer,
-                            cert_info->subject_public_key.key.size);
+                            &cert_info->subject_public_key.key);
     if (err != n20_error_ok_e) {
         return err;
     }
@@ -531,14 +530,14 @@ n20_error_t n20_open_dice_cdi_id(n20_crypto_digest_context_t *digest_ctx,
     return rc;
 }
 
-n20_error_t n20_eca_sign_message(n20_crypto_context_t *crypto_ctx,
-                                 n20_crypto_key_t parent_secret,
-                                 n20_crypto_key_type_t key_type,
-                                 n20_string_slice_t name,
-                                 n20_slice_t key_usage,
-                                 n20_slice_t message,
-                                 uint8_t *signature,
-                                 size_t *signature_size) {
+n20_error_t n20_eca_ee_sign_message(n20_crypto_context_t *crypto_ctx,
+                                    n20_crypto_key_t parent_secret,
+                                    n20_crypto_key_type_t key_type,
+                                    n20_string_slice_t name,
+                                    n20_slice_t key_usage,
+                                    n20_slice_t message,
+                                    uint8_t *signature,
+                                    size_t *signature_size) {
     /* Check if the crypto context is valid. */
     if (crypto_ctx == NULL) {
         return n20_error_missing_crypto_context_e;
@@ -573,25 +572,6 @@ n20_error_t n20_eca_sign_message(n20_crypto_context_t *crypto_ctx,
         &eca_ee_key,
         key_type);
     if (err != n20_error_ok_e) {
-        return err;
-    }
-
-    uint8_t public_key[96];
-    size_t public_key_size = sizeof(public_key);
-    /* 5. Get issuer public key. Life handles 3 */
-    err = crypto_ctx->key_get_public_key(crypto_ctx, eca_ee_key, public_key, &public_key_size);
-    if (err != n20_error_ok_e) {
-        crypto_ctx->key_free(crypto_ctx, eca_ee_key);
-        return err;
-    }
-
-    n20_cdi_id_t serial_number;
-
-    /* 6. Compute issuer CDI ID. Life handles 3 */
-    err = n20_open_dice_cdi_id(
-        &crypto_ctx->digest_ctx, (n20_slice_t){public_key_size, public_key}, serial_number);
-    if (err != n20_error_ok_e) {
-        crypto_ctx->key_free(crypto_ctx, eca_ee_key);
         return err;
     }
 
@@ -634,7 +614,7 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
 
     n20_compressed_input_t input_digest = {0};
     n20_crypto_key_t subject_cdi = issuer_cdi;
-    n20_error_t err;
+    n20_error_t err = n20_error_ok_e;
 
     if (cert_info->cert_type == n20_cert_type_eca_ee_e ||
         cert_info->cert_type == n20_cert_type_cdi_e) {
@@ -644,9 +624,9 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
         }
     }
 
-    /* 1. Derive subject cdi. Life handles 1 -> 2
+    /* 1. Derive subject CDI. Life handles 1 -> 2
      * If the certificate type is CDI, we need to derive the next level
-     * CDI secret first. Otherwise, the issuer cdi is the same as the subject CDI.*/
+     * CDI secret first. Otherwise, the issuer CDI is the same as the subject CDI.*/
     if (cert_info->cert_type == n20_cert_type_cdi_e) {
         /* Precondition number of live key handles: 1 */
         err = n20_next_level_cdi_attest(crypto_ctx, issuer_cdi, &subject_cdi, input_digest);
@@ -655,10 +635,17 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
         }
         /* Post condition number of live key handles: 2 */
     }
-    /* Post condition cert_type == n20_cert_type_cdi_e && handle_count == 2
-     * || cert_type != n20_cert_type_cdi_e && handle_count == 1 */
+    /* Postcondition
+     *   (cert_type = n20_cert_type_cdi_e AND handle_count == 2) OR
+     *   (cert_type != n20_cert_type_cdi_e AND handle_count == 1)
+     * In the following the number of key handles will be expressed as tuple
+     * where the first element is the number of live handles if
+     * cert_type == n20_cert_type_cdi_e and the second element is the
+     * number of live handles if cert_type != n20_cert_type_cdi_e. */
 
-    /* 2. Derive subject key pair. Life handles 2 -> 3 */
+    /* 2. Derive subject key pair */
+    /* Precondition:
+     *   handle_count = (2, 1)*/
     n20_crypto_key_t subject_key = NULL;
     switch (cert_info->cert_type) {
         case n20_cert_type_self_signed_e:
@@ -681,21 +668,42 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
             err = n20_error_unsupported_certificate_type_e;
             break;
     }
+    /* Postcondition:
+     *   (err = n20_error_ok_e AND handle_count = (3, 2))
+     *   OR
+     *   (err != n20_error_ok_e AND handle_count = (2, 1)) */
 
-    /* 3. Free subject cdi handle. Life handles 3 -> 2
+    /* 3. Free subject cdi handle.
      * If the certificate type is CDI, we need to free the subject cdi handle.
-     * That is regardless of whether the key derivation was successful or not. */
+     * That is regardless of whether the key derivation was successful or not.
+     * Precondition:
+     *   (err = n20_error_ok_e AND handle_count = (3, 2))
+     *   OR
+     *   (err != n20_error_ok_e AND handle_count = (2, 1)) */
     if (cert_info->cert_type == n20_cert_type_cdi_e) {
         crypto_ctx->key_free(crypto_ctx, subject_cdi);
     }
+    /* Postcondition:
+     *   (err = n20_error_ok_e AND handle_count = (2, 2))
+     *   OR
+     *   (err != n20_error_ok_e AND handle_count = (1, 1)) */
 
+    /* The handle count no longer diverges based on cert_type:
+     * Precondition:
+     *   (err = n20_error_ok_e AND handle_count = 2)
+     *   OR
+     *   (err != n20_error_ok_e AND handle_count = 1) */
     if (err != n20_error_ok_e) {
+        /* Precondition (return): handle_count = 1 */
         return err;
     }
+    /* Postcondition:
+     *   handle_count = 2 */
 
-    /* 4. Derive issuer key pair. Life handles 2 -> 3.
+    /* 4. Derive issuer key pair.
      * CDI certificates and ECA certificates are issued by the CDI key pair.
      * End entity certificates are issued by the ECA key pair. */
+    /* Precondition: handle_count = 2 */
     n20_crypto_key_t issuer_key = NULL;
     switch (cert_info->cert_type) {
         case n20_cert_type_self_signed_e:
@@ -711,12 +719,19 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
             err = n20_error_unsupported_certificate_type_e;
             break;
     }
+    /* Postcondition:
+     *   (err = n20_error_ok_e AND handle_count = 3)
+     *   OR
+     *   (err != n20_error_ok_e AND handle_count = 2) */
 
     if (err != n20_error_ok_e) {
         /* If the key derivation failed the subject_key handle needs to be freed here. */
+        /* Precondition: handle_count = 2 */
         crypto_ctx->key_free(crypto_ctx, subject_key);
+        /* Postcondition: handle_count = 1 */
         return err;
     }
+    /* Postcondition: handle_count = 3 */
 
     size_t subject_public_key_size = *subject_public_key_buffer_size_in_out;
 
@@ -726,7 +741,10 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
                                          subject_public_key_buffer_out,
                                          subject_public_key_buffer_size_in_out);
     if (err != n20_error_ok_e) {
+        /* Precondition: handle_count = 3 */
         crypto_ctx->key_free(crypto_ctx, subject_key);
+        crypto_ctx->key_free(crypto_ctx, issuer_key);
+        /* Postcondition: handle_count = 1 */
         return err;
     }
 
@@ -736,7 +754,10 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
         (n20_slice_t){*subject_public_key_buffer_size_in_out, subject_public_key_buffer_out},
         issuer_serial_number_out);
     if (err != n20_error_ok_e) {
+        /* Precondition: handle_count = 3 */
         crypto_ctx->key_free(crypto_ctx, subject_key);
+        crypto_ctx->key_free(crypto_ctx, issuer_key);
+        /* Postcondition: handle_count = 1 */
         return err;
     }
 
@@ -750,9 +771,14 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
     /* 8. Free subject key handle. Life handles 3 -> 2
      * The subject key handle needs to be freed regardless of whether the previous
      * call was successful or not. */
+    /* Precondition: handle_count = 3 */
     crypto_ctx->key_free(crypto_ctx, subject_key);
+    /* Postcondition: handle_count = 2 */
 
     if (err != n20_error_ok_e) {
+        /* Precondition: handle_count = 2 */
+        crypto_ctx->key_free(crypto_ctx, issuer_key);
+        /* Postcondition: handle_count = 1 */
         return err;
     }
 
@@ -762,15 +788,25 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
         (n20_slice_t){*subject_public_key_buffer_size_in_out, subject_public_key_buffer_out},
         subject_serial_number_out);
     if (err != n20_error_ok_e) {
+        /* Precondition: handle_count = 2 */
+        crypto_ctx->key_free(crypto_ctx, issuer_key);
+        /* Postcondition: handle_count = 1 */
         return err;
     }
+    /* Postcondition: handle_count = 2 */
 
+    /* Precondition: handle_count = 2 */
     if (issuer_key_out != NULL) {
         *issuer_key_out = issuer_key;
     } else {
         /* Release issuer key handle if not requested. Life handles 2 -> 1 */
+        /* Precondition: handle_count = 2 */
         crypto_ctx->key_free(crypto_ctx, issuer_key);
+        /* Postcondition: handle_count = 1 */
     }
+    /* Postcondition:
+     * (issuer_key_out != NULL AND handle_count = 2) OR
+     * (issuer_key_out == NULL AND handle_count = 1) */
 
     return n20_error_ok_e;
 }
@@ -795,6 +831,10 @@ n20_error_t n20_issue_certificate(n20_crypto_context_t *crypto_ctx,
     n20_crypto_key_t signing_key = NULL;
     n20_cdi_id_t issuer_serial_number = {0};
     n20_cdi_id_t subject_serial_number = {0};
+
+    /* The maximum expected public key size is 96 bytes (P-384).
+     * This buffer leaves room for an additional 0x04 prefix
+     * indicating uncompressed format. */
     uint8_t public_key_buffer[97];
     uint8_t *public_key = &public_key_buffer[1];
     size_t public_key_size = sizeof(public_key_buffer) - 1;
