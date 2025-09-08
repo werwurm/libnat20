@@ -841,13 +841,20 @@ struct n20_x509_s {
      * @brief The signature.
      *
      * This buffer holds the signature material. The signature
-     * format depends on the signature algorithm used. Refer to the
-     * following references for the different kinds of supported
-     * algorithms.
+     * format depends on the signature algorithm used.
+     * For most algorithms the provided signature buffer
+     * is interpreted as bit string and rendered verbatim into
+     * output stream.
      *
-     * - ED25519: See RFC8709 and RFC8032
-     * - NIST curves: See RFC5490
-     * - RSA: See RFC8017
+     * However, for the sake of compatibility with the CBOR/COSE
+     * implementation of libnat20 @ref n20_x509_cert makes the following
+     * adjustments:
+     *
+     * - ECDSA with SHA245 or SHA384: The public key must be encoded as
+     *   uncompressed point. I.e. R and S must be big-endian encoded
+     *   integers padded on the left to the appropriate
+     *   length, and placed back to back into the buffer.
+     *   I.e., 2 x 32 bytes for P-256 and 2 x 48 bytes for P-384.
      *
      * The pointer target must be at least `ceil(signature_bits / 8)`
      * bytes in size or the behavior is undefined.

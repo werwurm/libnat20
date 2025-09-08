@@ -311,7 +311,43 @@ void n20_x509_cert_content(n20_stream_t *const s, void *context) {
     if (x509 == NULL) {
         return;
     }
-    n20_asn1_bitstring(s, x509->signature, x509->signature_bits, n20_asn1_tag_info_no_override());
+
+    /* If signature == NULL or signature_bits == 0 rendering
+     * is delegated to n20_asn1_bitstring which will render an
+     * empty bit string regardless of the signature algorithm type. */
+    if (x509->signature != NULL && x509->signature_bits > 0 &&
+        (n20_asn1_oid_equals(x509->signature_algorithm.oid, &OID_ECDSA_WITH_SHA256) ||
+         n20_asn1_oid_equals(x509->signature_algorithm.oid, &OID_ECDSA_WITH_SHA384))) {
+        // ECDSA with SHA-256 or SHA-384
+        size_t mark = n20_stream_byte_count(s);
+        size_t coordinate_size = x509->signature_bits / 16;
+        n20_asn1_integer(s,
+                         (n20_slice_t){coordinate_size, x509->signature + coordinate_size},
+                         false,
+                         false,
+                         n20_asn1_tag_info_no_override());
+        n20_asn1_integer(s,
+                         (n20_slice_t){coordinate_size, x509->signature},
+                         false,
+                         false,
+                         n20_asn1_tag_info_no_override());
+        n20_asn1_header(s,
+                        N20_ASN1_CLASS_UNIVERSAL,
+                        /*constructed=*/true,
+                        N20_ASN1_TAG_SEQUENCE,
+                        n20_stream_byte_count(s) - mark);
+        /* Unused bits. */
+        n20_stream_put(s, 0);
+        n20_asn1_header(s,
+                        N20_ASN1_CLASS_UNIVERSAL,
+                        /*constructed=*/false,
+                        N20_ASN1_TAG_BIT_STRING,
+                        n20_stream_byte_count(s) - mark);
+    } else {
+        n20_asn1_bitstring(
+            s, x509->signature, x509->signature_bits, n20_asn1_tag_info_no_override());
+    }
+
     n20_x509_algorithm_identifier(s, &x509->signature_algorithm);
     n20_x509_cert_tbs(s, x509->tbs);
 }
