@@ -74,9 +74,11 @@ std::string hexdump_side_by_side(std::string const& label_a,
     size_t max_size = a.size() > b.size() ? a.size() : b.size();
     s << std::hex;
 
-    // Column offset for column header alignment.
-    constexpr size_t column_offset = 52;
-    s << "      " << label_a << std::string(column_offset - label_a.size(), ' ') << label_b << "\n";
+    // Column stride for column header alignment.
+    // This is the distance from the beginning of the first
+    // column to the beginning of the second column.
+    constexpr size_t COLUMN_STRIDE = 52;
+    s << "      " << label_a << std::string(COLUMN_STRIDE - label_a.size(), ' ') << label_b << "\n";
 
     size_t lines = (max_size + 15) / 16;
     for (size_t line = 0; line < lines; ++line) {

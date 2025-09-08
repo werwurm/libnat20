@@ -66,9 +66,9 @@ EVP_PKEY_PTR_t n20_crypto_key_to_evp_pkey_ptr(n20_crypto_key_type_s key_type,
 }
 
 std::string BsslError() {
-    constexpr size_t buffer_size = 2000;
-    char buffer[buffer_size];
+    constexpr size_t BSSL_ERROR_BUFFER_SIZE = 2000;
+    char buffer[BSSL_ERROR_BUFFER_SIZE];
     auto error = ERR_get_error();
-    ERR_error_string_n(error, buffer, buffer_size);
+    ERR_error_string_n(error, buffer, BSSL_ERROR_BUFFER_SIZE);
     return std::string(buffer);
 }
