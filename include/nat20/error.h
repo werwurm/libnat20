@@ -76,7 +76,7 @@ enum n20_error_s {
     /**
      * @brief Parent path size exceeds maximum allowed.
      *
-     * When deriving the effective CDI on behalf of a proxy DCIE service
+     * When deriving the effective CDI on behalf of a proxy DICE service
      * node, a stateless service needs to be provided with the full
      * parent path. If the implementation limits the maximal allowable
      * path length, e.g., due to memory constraints, this error may be returned
