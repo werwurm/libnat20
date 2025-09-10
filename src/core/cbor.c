@@ -125,7 +125,7 @@ bool n20_cbor_read_header(n20_istream_t *const s, n20_cbor_type_t *const type, u
     *n = 0;
 
     uint8_t additional_bytes = 1 << (additional_info - 24);
-    for (int i = 0; i < additional_bytes; i++) {
+    for (uint8_t i = 0; i < additional_bytes; i++) {
         uint8_t byte = 0;
         if (!n20_istream_get(s, &byte)) {
             return false;
@@ -145,6 +145,10 @@ bool n20_cbor_read_skip_item(n20_istream_t *const s) {
 
     switch (type) {
         case n20_cbor_type_array_e:
+            if (n > SIZE_MAX) {
+                /* Prevent overflow in the loop counter. */
+                return false;
+            }
             for (size_t i = 0; i < n; i++) {
                 if (!n20_cbor_read_skip_item(s)) {
                     return false;
@@ -152,6 +156,10 @@ bool n20_cbor_read_skip_item(n20_istream_t *const s) {
             }
             break;
         case n20_cbor_type_map_e:
+            if (n > SIZE_MAX) {
+                /* Prevent overflow in the loop counter. */
+                return false;
+            }
             for (size_t i = 0; i < n; i++) {
                 if (!n20_cbor_read_skip_item(s)) {
                     return false;
@@ -163,6 +171,10 @@ bool n20_cbor_read_skip_item(n20_istream_t *const s) {
             break;
         case n20_cbor_type_bytes_e:
         case n20_cbor_type_string_e: {
+            if (n > SIZE_MAX) {
+                /* Prevent uncaught truncation. */
+                return false;
+            }
             uint8_t const *slice = n20_istream_get_slice(s, n);
             if (slice == NULL) {
                 return false;
@@ -170,8 +182,10 @@ bool n20_cbor_read_skip_item(n20_istream_t *const s) {
             break;
         }
         case n20_cbor_type_tag_e:
-            return n20_cbor_read_skip_item(s);  // Skip the tag and the item it refers to.
+            /* Skip the tag and the item it refers to. */
+            return n20_cbor_read_skip_item(s);
         default:
+            /* Simple values and integers have no additional data to skip. */
             break;
     }
 
