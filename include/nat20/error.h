@@ -103,13 +103,6 @@ enum n20_error_s {
     n20_error_unsupported_certificate_format_e = 10,
 
     /**
-     * @brief Missing payload callback function.
-     *
-     * Returned by @ref n20_cose_sign1_payload if no payload callback function
-     * and/or context was provided.
-     */
-    n20_error_missing_payload_callback_e = 40,
-    /**
      * @brief The crypto context given to an interface was invalid.
      *
      * Implementations must return this error if the context given is
