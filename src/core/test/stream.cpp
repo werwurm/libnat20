@@ -113,8 +113,6 @@ TEST(StreamTest, StreamCounterOverflow) {
     ASSERT_TRUE(n20_stream_has_write_position_overflow(&s));
 }
 
-// Add these tests to the existing stream.cpp file
-
 class IStreamTest : public testing::Test {
    protected:
     void SetUp() override {
@@ -400,6 +398,52 @@ TEST_F(IStreamTest, EmptyBuffer) {
 
     uint8_t const* slice = n20_istream_get_slice(&stream, 1);
     EXPECT_EQ(slice, nullptr);
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+}
+
+TEST_F(IStreamTest, NullBuffer) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, nullptr, 0);  // Null buffer
+
+    uint8_t byte;
+    EXPECT_FALSE(n20_istream_get(&stream, &byte));
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+    EXPECT_EQ(n20_istream_read_position(&stream), 0);
+
+    uint8_t const* slice = n20_istream_get_slice(&stream, 1);
+    EXPECT_EQ(slice, nullptr);
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+}
+
+
+TEST_F(IStreamTest, ZeroSizeRead) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    std::vector<uint8_t> buffer(4, 0xFF);                      // Initialize with non-zero values
+    EXPECT_TRUE(n20_istream_read(&stream, buffer.data(), 0));  // Zero-size read
+    EXPECT_EQ(buffer, std::vector<uint8_t>({0xFF, 0xFF, 0xFF, 0xFF}));  // Buffer unchanged
+    EXPECT_EQ(n20_istream_read_position(&stream), 0);
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+}
+
+TEST_F(IStreamTest, ZeroSizeReadNullInit) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, nullptr, 0);
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+
+    EXPECT_TRUE(n20_istream_read(&stream, nullptr, 0));  // Zero-size read
+    EXPECT_EQ(n20_istream_read_position(&stream), 0);
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+}
+
+TEST_F(IStreamTest, ZeroSizeReadNullInitNonZeroBufferSize) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, nullptr, 1);
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+
+    EXPECT_FALSE(n20_istream_read(&stream, nullptr, 0));  // Zero-size read
+    EXPECT_EQ(n20_istream_read_position(&stream), 0);
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
 }
 
