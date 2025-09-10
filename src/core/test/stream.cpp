@@ -415,7 +415,6 @@ TEST_F(IStreamTest, NullBuffer) {
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
 }
 
-
 TEST_F(IStreamTest, ZeroSizeRead) {
     n20_istream_t stream;
     n20_istream_init(&stream, test_data.data(), test_data.size());
