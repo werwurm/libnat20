@@ -30,9 +30,9 @@ class MessagesTest : public testing::Test {
 
         // Set up common test values
         test_compressed_context = {4, (uint8_t*)"test"};
-        test_code_hash = {32, test_hash_data};
-        test_cert_data = {100, test_cert_buffer};
-        test_signature_data = {64, test_signature_buffer};
+        test_code_hash = {sizeof(test_hash_data), test_hash_data};
+        test_cert_data = {sizeof(test_cert_buffer), test_cert_buffer};
+        test_signature_data = {sizeof(test_signature_buffer), test_signature_buffer};
 
         // Fill hash data with pattern
         for (size_t i = 0; i < sizeof(test_hash_data); ++i) {
@@ -218,6 +218,7 @@ TEST_F(MessagesTest, EcaEeCertRequestRoundTrip) {
     EXPECT_EQ(2, read_request.payload.issue_eca_ee_cert.key_usage.size);
     EXPECT_EQ(0x01, read_request.payload.issue_eca_ee_cert.key_usage.buffer[0]);
     EXPECT_EQ(0x02, read_request.payload.issue_eca_ee_cert.key_usage.buffer[1]);
+    EXPECT_EQ(0, memcmp("abcd", read_request.payload.issue_eca_ee_cert.challenge.buffer, 4));
 }
 
 // Test ECA End-Entity sign request read/write
@@ -528,15 +529,24 @@ TEST_F(MessagesTest, OpenDiceInputAllFields) {
 
     // Verify all fields
     auto const& read_dice = read_request.payload.issue_cdi_cert.next_context;
-    EXPECT_EQ(test_code_hash.size, read_dice.code_hash.size);
-    EXPECT_EQ(4, read_dice.code_descriptor.size);
-    EXPECT_EQ(32, read_dice.configuration_hash.size);
-    EXPECT_EQ(4, read_dice.configuration_descriptor.size);
-    EXPECT_EQ(32, read_dice.authority_hash.size);
-    EXPECT_EQ(4, read_dice.authority_descriptor.size);
-    EXPECT_EQ(n20_open_dice_mode_debug_e, read_dice.mode);
-    EXPECT_EQ(4, read_dice.hidden.size);
-    EXPECT_EQ(4, read_dice.profile_name.size);
+    ASSERT_EQ(test_code_hash.size, read_dice.code_hash.size);
+    ASSERT_EQ(4, read_dice.code_descriptor.size);
+    ASSERT_EQ(32, read_dice.configuration_hash.size);
+    ASSERT_EQ(4, read_dice.configuration_descriptor.size);
+    ASSERT_EQ(32, read_dice.authority_hash.size);
+    ASSERT_EQ(4, read_dice.authority_descriptor.size);
+    ASSERT_EQ(n20_open_dice_mode_debug_e, read_dice.mode);
+    ASSERT_EQ(4, read_dice.hidden.size);
+    ASSERT_EQ(4, read_dice.profile_name.size);
+    EXPECT_EQ(0, memcmp(test_code_hash.buffer, read_dice.code_hash.buffer, test_code_hash.size));
+    EXPECT_EQ(0, memcmp("code", read_dice.code_descriptor.buffer, 4));
+    EXPECT_EQ(0,
+              memcmp(test_hash_data, read_dice.configuration_hash.buffer, sizeof(test_hash_data)));
+    EXPECT_EQ(0, memcmp("conf", read_dice.configuration_descriptor.buffer, 4));
+    EXPECT_EQ(0, memcmp(test_hash_data, read_dice.authority_hash.buffer, sizeof(test_hash_data)));
+    EXPECT_EQ(0, memcmp("auth", read_dice.authority_descriptor.buffer, 4));
+    EXPECT_EQ(0, memcmp("prof", read_dice.profile_name.buffer, 4));
+    EXPECT_EQ(0, memcmp("hide", read_dice.hidden.buffer, 4));
 }
 
 // Parameterized test for different request types

@@ -36,68 +36,92 @@ request_payload = promote_request /
                   issue_eca_ee_cert_request /
                   eca_ee_sign_request
 
+; Labels for map keys
+issuer_key_type_label = 1
+subject_key_type_label = 2
+open_dice_input_label = 3
+parent_path_label = 4
+certificate_format_label = 5
+name_label = 6
+key_usage_label = 7
+challenge_label = 8
+message_label = 9
+code_hash_label = 10
+code_descriptor_label = 11
+configuration_hash_label = 12
+configuration_descriptor_label = 13
+authority_hash_label = 14
+authority_descriptor_label = 15
+mode_label = 16
+hidden_label = 17
+profile_name_label = 18
+compressed_context_label = 19
+error_code_label = 20
+certificate_label = 21
+signature_label = 22
+
 ; Promote request (key 0)
 promote_request = {
-  1: compressed_context_bytes,  ; compressed_context
-  * int => any                  ; extensible for unknown keys
+  compressed_context_label: compressed_context_bytes,  ; compressed_context
+  * int => any                                         ; extensible for unknown keys
 }
 
 compressed_context_bytes = bstr
 
 ; Issue CDI certificate request (key 1)
 issue_cdi_cert_request = {
-  1: issuer_key_type,           ; issuer_key_type
-  2: subject_key_type,          ; subject_key_type
-  3: open_dice_input,           ; context
-  ? 4: compressed_context_array, ; parent_path (optional)
-  5: certificate_format,        ; certificate_format
-  * int => any                  ; extensible for unknown keys
+  issuer_key_type_label: issuer_key_type,         ; issuer_key_type
+  subject_key_type_label: subject_key_type,       ; subject_key_type
+  open_dice_input_label: open_dice_input,         ; context
+  ? parent_path_label: compressed_context_array,  ; parent_path (optional)
+  certificate_format_label: certificate_format,   ; certificate_format
+  * int => any                                    ; extensible for unknown keys
 }
 
 ; Issue ECA certificate request (key 2)
 issue_eca_cert_request = {
-  1: issuer_key_type,           ; issuer_key_type
-  2: subject_key_type,          ; subject_key_type
-  ? 3: compressed_context_array, ; parent_path (optional)
-  4: certificate_format,        ; certificate_format
-  ? 7: challenge_bytes,         ; challenge (optional)
-  * int => any                  ; extensible for unknown keys
+  issuer_key_type_label: issuer_key_type,         ; issuer_key_type
+  subject_key_type_label: subject_key_type,       ; subject_key_type
+  ? parent_path_label: compressed_context_array,  ; parent_path (optional)
+  certificate_format_label: certificate_format,   ; certificate_format
+  ? challenge_label: challenge_bytes,             ; challenge (optional)
+  * int => any                                    ; extensible for unknown keys
 }
 
 ; Issue ECA End-Entity certificate request (key 3)
 issue_eca_ee_cert_request = {
-  1: issuer_key_type,           ; issuer_key_type
-  2: subject_key_type,          ; subject_key_type
-  ? 3: compressed_context_array, ; parent_path (optional)
-  4: certificate_format,        ; certificate_format
-  ? 5: name_string,             ; name (optional)
-  ? 6: key_usage_bytes,         ; key_usage (optional)
-  ? 7: challenge_bytes,         ; challenge (optional)
-  * int => any                  ; extensible for unknown keys
+  issuer_key_type_label: issuer_key_type,         ; issuer_key_type
+  subject_key_type_label: subject_key_type,       ; subject_key_type
+  ? parent_path_label: compressed_context_array,  ; parent_path (optional)
+  certificate_format_label: certificate_format,   ; certificate_format
+  ? name_label: name_string,                      ; name (optional)
+  ? key_usage_label: key_usage_bytes,             ; key_usage (optional)
+  ? challenge_label: challenge_bytes,             ; challenge (optional)
+  * int => any                                    ; extensible for unknown keys
 }
 
 ; ECA End-Entity sign request (key 4)
 eca_ee_sign_request = {
-  2: subject_key_type,          ; subject_key_type (no issuer_key_type for signing)
-  ? 3: compressed_context_array, ; parent_path (optional)
-  ? 5: name_string,             ; name (optional)
-  ? 6: key_usage_bytes,         ; key_usage (optional)
-  8: message_bytes,             ; message
-  * int => any                  ; extensible for unknown keys
+  subject_key_type_label: subject_key_type,      ; subject_key_type (no issuer_key_type for signing)
+  ? parent_path_label: compressed_context_array, ; parent_path (optional)
+  name_label: name_string,                       ; name
+  key_usage_label: key_usage_bytes,              ; key_usage
+  message_label: message_bytes,                  ; message
+  * int => any                                   ; extensible for unknown keys
 }
 
 ; OpenDICE input structure
 open_dice_input = {
-  ? 1: code_hash_bytes,         ; code_hash (optional)
-  ? 2: code_descriptor_bytes,   ; code_descriptor (optional)
-  ? 3: configuration_hash_bytes, ; configuration_hash (optional)
-  ? 4: configuration_descriptor_bytes, ; configuration_descriptor (optional)
-  ? 5: authority_hash_bytes,    ; authority_hash (optional)
-  ? 6: authority_descriptor_bytes, ; authority_descriptor (optional)
-  ? 7: mode_uint,               ; mode (optional, 0-3)
-  ? 8: hidden_bytes,            ; hidden (optional)
-  ? 9: profile_name_string,     ; profile_name (optional)
-  * int => any                  ; extensible for unknown keys
+  ? code_hash_label: code_hash_bytes,               ; code_hash (optional)
+  ? code_descriptor_label: code_descriptor_bytes,   ; code_descriptor (optional)
+  ? configuration_hash_label: configuration_hash_bytes, ; configuration_hash (optional)
+  ? configuration_descriptor_label: configuration_descriptor_bytes, ; configuration_descriptor (optional)
+  ? authority_hash_label: authority_hash_bytes,     ; authority_hash (optional)
+  ? authority_descriptor_label: authority_descriptor_bytes, ; authority_descriptor (optional)
+  ? mode_label: mode_uint,                          ; mode (optional, 0-3)
+  ? hidden_label: hidden_bytes,                     ; hidden (optional)
+  ? profile_name_label: profile_name_string,        ; profile_name (optional)
+  * int => any                                      ; extensible for unknown keys
 }
 
 ; Common types
@@ -123,20 +147,20 @@ name_string = tstr
 
 ; Response messages
 issue_cert_response = {
-  ? 1: error_code_uint,         ; error_code (present if error)
-  ? 2: certificate_bytes,       ; certificate (present if success)
-  * int => any                  ; extensible for unknown keys
+  ? error_code_label: error_code_uint,         ; error_code (present if error)
+  ? certificate_label: certificate_bytes,      ; certificate (present if success)
+  * int => any                                 ; extensible for unknown keys
 }
 
 error_response = {
-  ? 1: error_code_uint,         ; error_code (present if error)
-  * int => any                  ; extensible for unknown keys
+  ? error_code_label: error_code_uint,         ; error_code (present if error)
+  * int => any                                 ; extensible for unknown keys
 }
 
 eca_ee_sign_response = {
-  ? 1: error_code_uint,         ; error_code (present if error)
-  ? 2: signature_bytes,         ; signature (present if success)
-  * int => any                  ; extensible for unknown keys
+  ? error_code_label: error_code_uint,         ; error_code (present if error)
+  ? signature_label: signature_bytes,          ; signature (present if success)
+  * int => any                                 ; extensible for unknown keys
 }
 
 ; Response data types
