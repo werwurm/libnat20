@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <nat20/constants.h>
 #include <nat20/crypto.h>
 #include <nat20/error.h>
 #include <nat20/oid.h>
@@ -73,32 +74,6 @@ extern "C" {
  * at compile time.
  */
 typedef uint8_t n20_compressed_input_t[N20_FUNC_COMPRESSED_INPUT_SIZE];
-
-/**
- * @brief Certificate formats.
- * This enumeration defines the formats of certificates that can be used
- * in the OpenDICE context.
- * It is used to specify the format of the certificate when issuing
- * certificates in the OpenDICE framework.
- *
- * The numbers are used in communication protocols to identify
- * the requested certificate format. Therefore, they must be stable.
- */
-enum n20_certificate_format_s {
-    /**
-     * @brief Default value indicating no specific certificate format.
-     *
-     * This is used as default initialization value or when no
-     * specific format is requested.
-     */
-    n20_certificate_format_none_e = 0,
-    /**
-     * @brief X.509 certificate format.
-     *
-     * This is used to request an X.509 certificate with DER encoding.
-     */
-    n20_certificate_format_x509_e = 1,
-};
 
 /**
  * @brief Alias for @ref n20_certificate_format_s.
