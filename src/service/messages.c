@@ -781,7 +781,7 @@ void n20_msg_eca_ee_sign_request_write(n20_stream_t *s,
                                        n20_msg_eca_ee_sign_request_t const *request) {
     int pairs = 2;
 
-    // Write fields in reverse order (because of reverse stream)
+    /* Write fields in reverse order */
     n20_cbor_write_byte_string(s, request->message);
     n20_cbor_write_int(s, N20_MSG_LABEL_MESSAGE);
 
@@ -836,7 +836,7 @@ n20_error_t n20_msg_request_write(n20_msg_request_t const *request,
     }
 
     n20_cbor_write_uint(&stream, (uint64_t)request->request_type);
-    n20_cbor_write_array_header(&stream, 2);  // The request is an array of two elements.
+    n20_cbor_write_array_header(&stream, 2);
 
     if (n20_stream_has_write_position_overflow(&stream)) {
         return n20_error_write_position_overflow_e;
@@ -1017,7 +1017,7 @@ n20_error_t n20_msg_eca_ee_sign_response_read_cb(n20_istream_t *istream,
             response->signature.buffer = n20_istream_get_slice(istream, cbor_value);
             break;
         default:
-            // Skip unknown keys.
+            /* Skip unknown keys. */
             return n20_cbor_read_skip_item(istream) ? n20_error_ok_e
                                                     : n20_error_unexpected_message_structure_e;
     }
