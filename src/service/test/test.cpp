@@ -20,7 +20,7 @@
 
 int main(int argc, char *argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
-    std::cout << "Testing libnat20 service..." << std::endl;
+    std::cout << "Testing Libnat20 service..." << std::endl;
     int ret{RUN_ALL_TESTS()};
     if (!ret) {
         std::cout << "SUCCESS" << std::endl;

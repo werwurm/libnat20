@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <nat20/constants.h>
 #include <nat20/crypto.h>
 #include <nat20/open_dice.h>
 #include <nat20/types.h>
@@ -43,41 +44,13 @@ extern "C" {
  *
  * This limit prevents unbounded memory allocation and ensures predictable
  * performance. Paths longer than this limit will be rejected.
+ *
+ * This value can be adjusted using -DNAT20_STATELESS_MAX_PATH_LENGTH=<value>
+ * during cmake configuration. The default is 8.
  */
 #ifndef N20_STATELESS_MAX_PATH_LENGTH
 #define N20_STATELESS_MAX_PATH_LENGTH 8
 #endif
-
-/**
- * @brief Certificate formats.
- * This enumeration defines the formats of certificates that can be used
- * in the OpenDICE context.
- * It is used to specify the format of the certificate when issuing
- * certificates in the OpenDICE framework.
- *
- * The numbers are used in communication protocols to identify
- * the requested certificate format. Therefore, they must be stable.
- */
-enum n20_msg_certificate_format_s {
-    /**
-     * @brief Default value indicating no specific certificate format.
-     *
-     * This is used as default initialization value or when no
-     * specific format is requested.
-     */
-    n20_certificate_format_none_e = 0,
-    /**
-     * @brief X.509 certificate format.
-     *
-     * This is used to request an X.509 certificate with DER encoding.
-     */
-    n20_certificate_format_x509_e = 1,
-};
-
-/**
- * @brief Alias for @ref n20_certificate_format_s.
- */
-typedef enum n20_msg_certificate_format_s n20_certificate_format_t;
 
 /**
  * @brief Request type enumeration for NAT20 service operations.

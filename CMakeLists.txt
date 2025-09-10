@@ -31,6 +31,18 @@ option(NAT20_WITH_DOCS "Create the documentation target." OFF)
 # on the `cmake -B` command line.
 option(NAT20_WITH_CRYPTO_BSSL "Compile the crypto reference implementation." OFF)
 
+# This option controls the maximum path length for stateless service implementations.
+# In stateless service implementations, all of the context required to derive the effective
+# CDI must be provided in the request. This means a request is potentially unbounded in size.
+# The reference implementation limits the path length to 8. Integrators may change this
+# value as needed or implement an alternative service with a dynamic memory allocation strategy.
+# Note that increasing this value will increase the stack usage of the service implementation.
+# The maximum path length is the number of elements in the path, not the number of bytes.
+# Each path element is a SHA512 hash (64 bytes).
+if(NOT NAT20_STATELESS_MAX_PATH_LENGTH)
+    set(NAT20_STATELESS_MAX_PATH_LENGTH 8)
+endif()
+
 # The C standard shall be C11.
 set(CMAKE_C_STANDARD 11)
 
@@ -60,6 +72,7 @@ set(LIBNAT20_PUB_HEADERS
     # These files will be included in the generation of the API documentation.
     include/nat20/asn1.h
     include/nat20/cbor.h
+    include/nat20/constants.h
     include/nat20/crypto.h
     include/nat20/error.h
     include/nat20/oid.h
@@ -189,6 +202,11 @@ target_compile_options(nat20_service
     PRIVATE -Wall
     PRIVATE -Wextra
     PRIVATE -Werror
+)
+
+# Add -DN20_STATELESS_MAX_PATH_LENGTH=<value> to the compiler command line.
+target_compile_definitions(nat20_service
+    PUBLIC N20_STATELESS_MAX_PATH_LENGTH=${NAT20_STATELESS_MAX_PATH_LENGTH}
 )
 
 target_include_directories(nat20_service
