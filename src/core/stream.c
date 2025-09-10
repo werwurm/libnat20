@@ -88,7 +88,7 @@ void n20_istream_init(n20_istream_t *s, uint8_t const *buffer, size_t buffer_siz
     s->begin = buffer;
     s->size = buffer_size;
     s->read_position = 0;
-    s->buffer_underrun = buffer == NULL || buffer_size == 0;
+    s->buffer_underrun = buffer == NULL && buffer_size != 0;
 }
 
 bool n20_istream_read(n20_istream_t *s, uint8_t *buffer, size_t buffer_size) {

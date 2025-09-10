@@ -271,11 +271,15 @@ typedef struct n20_istream_s {
  * @brief Initialize an @ref n20_istream_t structure.
  *
  * Initializes a structure of @ref n20_istream_t.
- * It is safe to call this function with `buffer == NULL` or
- * `buffer_size == 0`. In this case the buffer_underrun field is
- * set to true and all subsequent calls to `n20_istream_read`,
- * or `n20_istream_get` will return false and `n20_istream_get_slice`
- * will return NULL.
+ * It is safe to call this function with @p buffer == NULL or
+ * @p buffer_size == 0.
+ * If @p buffer_size is 0, the stream is considered empty
+ * but in a good state. Zero size reads will succeed but
+ * any read of size greater than zero will fail and set
+ * the `buffer_underrun` flag.
+ * If @p buffer is NULL, and @p buffer_size is not 0,
+ * the stream is considered empty and in a bad state.
+ * Any read will fail and `buffer_underrun` is set.
  *
  * ## Ownership and life time
  *
