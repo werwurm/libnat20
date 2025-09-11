@@ -103,6 +103,16 @@ enum n20_error_s {
     n20_error_unsupported_certificate_format_e = 10,
 
     /**
+     * @brief Unexpected NULL pointer key info.
+     */
+    n20_error_unexpected_null_key_info_e = 11,
+
+    /**
+     * @brief Unexpected NULL pointer public key.
+     */
+    n20_error_unexpected_null_public_key_e = 12,
+
+    /**
      * @brief The crypto context given to an interface was invalid.
      *
      * Implementations must return this error if the context given is

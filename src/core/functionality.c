@@ -302,6 +302,14 @@ n20_error_t n20_init_algorithm_identifier(n20_x509_algorithm_identifier_t *algor
 n20_error_t n20_init_key_info(n20_x509_public_key_info_t *key_info,
                               n20_crypto_key_type_t key_type,
                               n20_slice_t const *public_key) {
+    if (key_info == NULL) {
+        return n20_error_unexpected_null_key_info_e;
+    }
+
+    if (public_key == NULL) {
+        return n20_error_unexpected_null_public_key_e;
+    }
+
     switch (key_type) {
         case n20_crypto_key_type_ed25519_e:
             key_info->algorithm_identifier.oid = &OID_ED25519;
