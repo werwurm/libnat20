@@ -15,14 +15,14 @@
 name: lcov-test-coverage-report
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  workflow_run:
+    workflows: ["cmake-build-and-test"]
+    types:
+      - completed
 
 jobs:
   lcov-test-coverage-report:
-    needs: cmake-build-and-test
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       matrix:
         options:
@@ -40,11 +40,13 @@ jobs:
         uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be #v2.0.2
         with:
           cmake-version: "3.22.x"
+      - name: Setup LCOV
+        uses: hrishikesh-kadam/setup-lcov@6c1aa0cc9e1c02f9f58f01ac599f1064ccc83470 #v1.1.0
       - name: Generate
         run: cmake -S . -B cmake/build ${{ matrix.options.extra_cmake_args }}
       - name: Build and test
         run: cmake --build cmake/build -j $(( $(nproc) + 1 )) --target coverage ${{ matrix.options.extra_targets }}
-      - name: Setup LCOV
+      - name: Report code coverage
         uses: zgosalvez/github-actions-report-lcov@eda775f552bfb2bffbdedea26f19dfb8c24a1648 #v4.1.26
         with:
           coverage-file: "cmake/build/coverage.info"
