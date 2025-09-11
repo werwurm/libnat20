@@ -1,0 +1,49 @@
+# Copyright 2025 Aurora Operations, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: lcov-test-coverage-report
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lcov-test-coverage-report:
+    needs: cmake-build-and-test
+    strategy:
+      matrix:
+        options: [
+          { extra_cmake_args: ' -DNAT20_WITH_TESTS=ON -DNAT20_WITH_CRYPTO_BSSL=ON -DNAT20_WITH_COVERAGE=ON', extra_targets: '' }
+        ]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b #v4.1.5
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be #v2.0.2
+        with:
+          cmake-version: '3.22.x'
+      - name: Generate
+        run: cmake -S . -B cmake/build ${{ matrix.options.extra_cmake_args }}
+      - name: Build and test
+        run: cmake --build cmake/build -j $(( $(nproc) + 1 )) --target coverage ${{ matrix.options.extra_targets }}
+      - name: Setup LCOV
+        uses: zgosalvez/github-actions-report-lcov@eda775f552bfb2bffbdedea26f19dfb8c24a1648 #v4.1.26
+        with:
+          coverage-file: 'cmake/build/coverage.info'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          artifact-name: 'LCov Test Coverage Report'
+          update-comment: true
