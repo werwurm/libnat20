@@ -25,9 +25,13 @@ jobs:
     needs: cmake-build-and-test
     strategy:
       matrix:
-        options: [
-          { extra_cmake_args: ' -DNAT20_WITH_TESTS=ON -DNAT20_WITH_CRYPTO_BSSL=ON -DNAT20_WITH_COVERAGE=ON', extra_targets: '' }
-        ]
+        options:
+          [
+            {
+              extra_cmake_args: " -DNAT20_WITH_TESTS=ON -DNAT20_WITH_CRYPTO_BSSL=ON -DNAT20_WITH_COVERAGE=ON",
+              extra_targets: "",
+            },
+          ]
     runs-on: ubuntu-22.04
 
     steps:
@@ -35,7 +39,7 @@ jobs:
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be #v2.0.2
         with:
-          cmake-version: '3.22.x'
+          cmake-version: "3.22.x"
       - name: Generate
         run: cmake -S . -B cmake/build ${{ matrix.options.extra_cmake_args }}
       - name: Build and test
@@ -43,7 +47,7 @@ jobs:
       - name: Setup LCOV
         uses: zgosalvez/github-actions-report-lcov@eda775f552bfb2bffbdedea26f19dfb8c24a1648 #v4.1.26
         with:
-          coverage-file: 'cmake/build/coverage.info'
+          coverage-file: "cmake/build/coverage.info"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          artifact-name: 'LCov Test Coverage Report'
+          artifact-name: "LCov Test Coverage Report"
           update-comment: true
