@@ -15,16 +15,18 @@
 name: lcov-test-coverage-report
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
+  workflow_run:
+    workflows: ["cmake-build-and-test"]
+    types:
+      - completed
 
 permissions:
   pull-requests: write
 
 jobs:
   lcov-test-coverage-report:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       matrix:
         options:
