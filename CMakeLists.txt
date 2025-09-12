@@ -339,19 +339,19 @@ if (NAT20_WITH_TESTS)
         endif()
         add_custom_target(coverage
             # Clear any previous coverage data
-            COMMAND lcov --zerocounters --directory ${CMAKE_BINARY_DIR}
+            COMMAND lcov --zerocounters --base-directory ${CMAKE_SOURCE_DIR} --directory ${CMAKE_BINARY_DIR}
 
             # Run the tests to generate new coverage data
             COMMAND ctest
 
             # Capture the coverage data into coverage.info
-            COMMAND lcov --capture --no-external --directory ${CMAKE_BINARY_DIR} --output-file coverage.info
+            COMMAND lcov --capture --no-external --base-directory ${CMAKE_SOURCE_DIR} --directory ${CMAKE_BINARY_DIR} --output-file ${CMAKE_BINARY_DIR}/coverage.info
 
             # Remove system header files from the report
-            COMMAND lcov --remove coverage.info '*/_deps/*' --output-file coverage.info
+            COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '*/_deps/*' --output-file ${CMAKE_BINARY_DIR}/coverage.info
 
             # Generate the HTML report into the specified directory
-            COMMAND genhtml coverage.info --output-directory coverage_html
+            COMMAND genhtml ${CMAKE_BINARY_DIR}/coverage.info --output-directory ${CMAKE_BINARY_DIR}/coverage_html
 
             # Provide a comment for the build output
             COMMENT "Generating code coverage report..."
