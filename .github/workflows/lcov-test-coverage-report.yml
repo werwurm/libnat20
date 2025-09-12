@@ -20,6 +20,9 @@ on:
       - main
   pull_request:
 
+permissions:
+  pull-requests: write
+
 jobs:
   lcov-test-coverage-report:
     strategy:
