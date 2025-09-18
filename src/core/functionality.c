@@ -92,7 +92,7 @@ n20_slice_t const ECA_EE_KEY_PAIR_STR_SLICE = {
  * @brief Buffer holding the salt used for the ID derivation.
  *
  * This buffer is used to derive the ID from the attestation public key.
- & The buffer is 64 bytes long and is used as input to the KDF function.
+ * The buffer is 64 bytes long and is used as input to the KDF function.
  */
 uint8_t const ID_SALT[] = {
     0xdb, 0xdb, 0xae, 0xbc, 0x80, 0x20, 0xda, 0x9f, 0xf0, 0xdd, 0x5a, 0x24, 0xc8, 0x3a, 0xa5, 0xa5,
