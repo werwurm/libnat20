@@ -232,6 +232,33 @@ extern n20_error_t n20_derive_eca_key(n20_crypto_context_t *crypto_ctx,
                                       n20_crypto_key_type_t key_type);
 
 /**
+ * @brief Derives an ECA end-entity key from the given CDI secret.
+ *
+ * This function derives an ECA end-entity (EE) key from the given CDI
+ * secret using the provided parameters. The derived key is returned in
+ * the given buffer.
+ *
+ * It works similar to @ref n20_derive_cdi_attestation_key, but it uses
+ * a different tag to make the key space disjoint from the cdi attestation
+ * and ECA CA key space. And it uses the provided salt to allow for
+ * additional disambiguation of the derived keys.
+ *
+ * @param crypto_ctx The crypto context.
+ * @param cdi_secret The CDI secret to derive the key from.
+ * @param salt The salt to use for the derivation.
+ * @param derived The derived key.
+ * @param key_type The type of the derived key.
+ *
+ * @return n20_error_ok_e on success, or an error code on failure.
+ */
+
+extern n20_error_t n20_derive_eca_ee_key(n20_crypto_context_t *crypto_ctx,
+                                         n20_crypto_key_t cdi_secret,
+                                         n20_slice_t const salt,
+                                         n20_crypto_key_t *derived,
+                                         n20_crypto_key_type_t key_type);
+
+/**
  * @brief Initializes the algorithm identifier structure.
  *
  * This function initializes the algorithm identifier structure
@@ -379,22 +406,45 @@ extern n20_error_t n20_eca_ee_sign_message(n20_crypto_context_t *crypto_ctx,
  * - In the case that the subject key belongs to the next level
  *   CDI it derives the next CDI from the open dice input.
  *   in the @p cert_info.
+ * - If @p issuer_serial_number_out is not NULL, the issuer's
+ *   public key is loaded and the CDI_ID is computed and stored
+ *   into @p issuer_serial_number_out. Note that to minimize
+ *   stack usage the provided subject public key buffer is used
+ *   is used as a scratch pad for the issuer public key. This
+ *   means that the buffer must be large enough for the issuer
+ *   public key type even if a smaller subject key type is used.
+ *   As of this writing 96 bytes is sufficient for the largest
+ *   supported key type, i.e, P-384.
  * - The subject's key pair is derived from subject's CDI.
  *   This is the next CDI if the @p cert_info.cert_type is
  *   @ref n20_cert_type_cdi_e and @p issuer_cdi otherwise.
- * - Both, the issuer and subject public keys are loaded
- *   for the purpose of computing the CDI_ID.
- *   To limit stack usage, the function uses the given
- *   @p public_key_buffer_out as scratch pad for the issuer
- *   public key before. Loading overwriting it with the subject
- *   public key. This means that the buffer must be large
- *   enough for the larger of issuer and subject public key
- *   types. As of this writing 96 bytes is sufficient for the
- *   largest supported key type, i.e, P-384.
+ * - The subject's public key is loaded and stored in
+ *   @p subject_public_key_buffer_out. The size of the buffer
+ *   must be given in @p subject_public_key_buffer_size_in_out
+ *   and on return the actual size is stored there.
+ *   If the buffer is too small, the function returns
+ *   @ref n20_error_crypto_insufficient_buffer_size_e and
+ *   sets @p subject_public_key_buffer_size_in_out to the
+ *   required size.
+ * - If @p subject_serial_number_out is not NULL, the
+ *   subject's public key is used to compute the subject's CDI_ID
+ *   which is stored in @p subject_serial_number_out.
+ * - If @p issuer_key_out is not NULL, the issuer's key handle
+ *   is returned in @p issuer_key_out. The caller is responsible
+ *   for freeing the key handle when it is no longer needed.
+ *
+ * Not counting @p issuer_cdi, the function may use no more than
+ * 2 additional key handles at any time. If the function returns an
+ * error, those additional key handles are guaranteed to be freed.
+ * If the function returns @ref n20_error_ok_e, the function
+ * guarantees that no more than 1 additional key handle is
+ * used, and only if @p issuer_key_out is not NULL. In this case
+ * the caller is responsible for freeing the additional key handle
+ * returned in @p issuer_key_out.
  *
  * @param crypto_ctx
  * @param issuer_cdi
- * @param context
+ * @param cert_info
  * @param issuer_key_type
  * @param subject_key_type
  * @param issuer_key_out
@@ -406,7 +456,7 @@ extern n20_error_t n20_eca_ee_sign_message(n20_crypto_context_t *crypto_ctx,
  */
 extern n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
                                                    n20_crypto_key_t issuer_cdi,
-                                                   n20_open_dice_cert_info_t const *context,
+                                                   n20_open_dice_cert_info_t const *cert_info,
                                                    n20_crypto_key_type_t const issuer_key_type,
                                                    n20_crypto_key_type_t const subject_key_type,
                                                    n20_crypto_key_t *issuer_key_out,

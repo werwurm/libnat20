@@ -146,15 +146,16 @@ n20_error_t n20_compress_input(n20_crypto_digest_context_t *crypto_ctx,
             input_list[4] = input->open_dice_input.hidden;
             input_list_count = 5;
             break;
-        case n20_cert_type_self_signed_e:
-        case n20_cert_type_eca_e:
-            break;
         case n20_cert_type_eca_ee_e:
             input_list[0] =
                 (n20_slice_t){.size = sizeof(input->key_usage), .buffer = input->key_usage};
             input_list[1] = (n20_slice_t){.size = input->eca_ee.name.size,
                                           .buffer = (uint8_t const *)input->eca_ee.name.buffer};
             input_list_count = 2;
+            break;
+        case n20_cert_type_self_signed_e:
+        case n20_cert_type_eca_e:
+        default:
             break;
     }
 
@@ -335,10 +336,10 @@ n20_error_t n20_init_key_info(n20_x509_public_key_info_t *key_info,
     return n20_error_ok_e;
 }
 
-static n20_error_t n20_signer_callback(void *ctx,
-                                       n20_slice_t tbs,
-                                       uint8_t *signature,
-                                       size_t *signature_size) {
+n20_error_t n20_signer_callback(void *ctx,
+                                n20_slice_t tbs,
+                                uint8_t *signature,
+                                size_t *signature_size) {
 
     n20_signer_t *signer = (n20_signer_t *)ctx;
 
@@ -433,6 +434,8 @@ n20_error_t n20_issue_x509_cert(n20_open_dice_cert_info_t const *cert_info,
             break;
         case n20_cert_type_self_signed_e:
             break;
+        default:
+            return n20_error_unsupported_certificate_type_e;
     }
 
     extensions_buffer[tbs.extensions.extensions_count++] = (n20_x509_extension_t){
@@ -530,6 +533,10 @@ n20_error_t n20_open_dice_cdi_id(n20_crypto_digest_context_t *digest_ctx,
                                       ID_STR_SLICE,
                                       20,
                                       &cdi_id[0]);
+    if (rc != n20_error_ok_e) {
+        return rc;
+    }
+
     /* Ensure that the most significant bit is not set so that it
      * is a valid positive integer that can be represented as no
      * more than 20 bytes in ASN1.
@@ -618,6 +625,10 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
 
     if (subject_public_key_buffer_size_in_out == NULL) {
         return n20_error_unexpected_null_buffer_size_e;
+    }
+
+    if (cert_info == NULL) {
+        return n20_error_unexpected_null_certificate_info_e;
     }
 
     n20_compressed_input_t input_digest = {0};
@@ -743,30 +754,35 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
 
     size_t subject_public_key_size = *subject_public_key_buffer_size_in_out;
 
-    /* 5. Get issuer public key. Life handles 3 */
-    err = crypto_ctx->key_get_public_key(crypto_ctx,
-                                         issuer_key,
-                                         subject_public_key_buffer_out,
-                                         subject_public_key_buffer_size_in_out);
-    if (err != n20_error_ok_e) {
-        /* Precondition: handle_count = 3 */
-        crypto_ctx->key_free(crypto_ctx, subject_key);
-        crypto_ctx->key_free(crypto_ctx, issuer_key);
-        /* Postcondition: handle_count = 1 */
-        return err;
-    }
+    /* If the issuer serial number is requested, the public key needs
+     * to be retrieved and the cdi_id computed. Otherwise this
+     * can be skipped. */
+    if (issuer_serial_number_out != NULL) {
+        /* 5. Get issuer public key. Life handles 3 */
+        err = crypto_ctx->key_get_public_key(crypto_ctx,
+                                             issuer_key,
+                                             subject_public_key_buffer_out,
+                                             subject_public_key_buffer_size_in_out);
+        if (err != n20_error_ok_e) {
+            /* Precondition: handle_count = 3 */
+            crypto_ctx->key_free(crypto_ctx, subject_key);
+            crypto_ctx->key_free(crypto_ctx, issuer_key);
+            /* Postcondition: handle_count = 1 */
+            return err;
+        }
 
-    /* 6. Compute issuer CDI ID. Life handles 3 */
-    err = n20_open_dice_cdi_id(
-        &crypto_ctx->digest_ctx,
-        (n20_slice_t){*subject_public_key_buffer_size_in_out, subject_public_key_buffer_out},
-        issuer_serial_number_out);
-    if (err != n20_error_ok_e) {
-        /* Precondition: handle_count = 3 */
-        crypto_ctx->key_free(crypto_ctx, subject_key);
-        crypto_ctx->key_free(crypto_ctx, issuer_key);
-        /* Postcondition: handle_count = 1 */
-        return err;
+        /* 6. Compute issuer CDI ID. Life handles 3 */
+        err = n20_open_dice_cdi_id(
+            &crypto_ctx->digest_ctx,
+            (n20_slice_t){*subject_public_key_buffer_size_in_out, subject_public_key_buffer_out},
+            issuer_serial_number_out);
+        if (err != n20_error_ok_e) {
+            /* Precondition: handle_count = 3 */
+            crypto_ctx->key_free(crypto_ctx, subject_key);
+            crypto_ctx->key_free(crypto_ctx, issuer_key);
+            /* Postcondition: handle_count = 1 */
+            return err;
+        }
     }
 
     /* 7. Get subject public key. Life handles 3 */
@@ -790,18 +806,22 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
         return err;
     }
 
-    /* 9. Compute subject CDI ID. Life handles 2 */
-    err = n20_open_dice_cdi_id(
-        &crypto_ctx->digest_ctx,
-        (n20_slice_t){*subject_public_key_buffer_size_in_out, subject_public_key_buffer_out},
-        subject_serial_number_out);
-    if (err != n20_error_ok_e) {
-        /* Precondition: handle_count = 2 */
-        crypto_ctx->key_free(crypto_ctx, issuer_key);
-        /* Postcondition: handle_count = 1 */
-        return err;
+    /* If the subject serial number is requested, the cdi_id needs to be computed.
+     * Otherwise this can be skipped. */
+    if (subject_serial_number_out != NULL) {
+        /* 9. Compute subject CDI ID. Life handles 2 */
+        err = n20_open_dice_cdi_id(
+            &crypto_ctx->digest_ctx,
+            (n20_slice_t){*subject_public_key_buffer_size_in_out, subject_public_key_buffer_out},
+            subject_serial_number_out);
+        if (err != n20_error_ok_e) {
+            /* Precondition: handle_count = 2 */
+            crypto_ctx->key_free(crypto_ctx, issuer_key);
+            /* Postcondition: handle_count = 1 */
+            return err;
+        }
+        /* Postcondition: handle_count = 2 */
     }
-    /* Postcondition: handle_count = 2 */
 
     /* Precondition: handle_count = 2 */
     if (issuer_key_out != NULL) {
