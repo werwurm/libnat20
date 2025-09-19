@@ -71,6 +71,7 @@ set(LIBNAT20_PUB_HEADERS
     include/nat20/error.h
     include/nat20/functionality.h
     include/nat20/oid.h
+    include/nat20/open_dice.h
     include/nat20/stream.h
     include/nat20/types.h
     include/nat20/x509_ext_open_dice_input.h

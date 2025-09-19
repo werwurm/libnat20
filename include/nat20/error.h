@@ -83,7 +83,7 @@ enum n20_error_s {
     /**
      * @brief Unexpected NULL pointer public key buffer.
      *
-     * Returned by @n20_compute_certificate_context if no public key buffer
+     * Returned by @ref n20_compute_certificate_context if no public key buffer
      * was provided.
      */
     n20_error_unexpected_null_public_key_buffer_e = 8,
@@ -98,7 +98,7 @@ enum n20_error_s {
     /**
      * @brief Unsupported certificate format.
      *
-     * Returned if an unexpected value of @ref n20_cert_format_t was encountered.
+     * Returned if an unexpected value of @ref n20_certificate_format_t was encountered.
      */
     n20_error_unsupported_certificate_format_e = 10,
 

@@ -564,7 +564,7 @@ n20_error_t n20_eca_ee_sign_message(n20_crypto_context_t *crypto_ctx,
     switch (key_usage.size) {
         default:
             cert_info.key_usage[1] = key_usage.buffer[1];
-            __attribute__((fallthrough));
+            /* fallthrough */
         case 1:
             cert_info.key_usage[0] = key_usage.buffer[0];
             break;
