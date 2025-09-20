@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 #include <nat20/oid.h>
 #include <nat20/stream.h>
+#include <nat20/types.h>
 
 #include <cstdint>
 #include <vector>
@@ -91,6 +92,61 @@ TEST_P(StreamTest, StreamPrepend) {
     }
 }
 
+TEST(StreamTest, StreamPrependWithNullStream) {
+    // Should not crash
+    n20_stream_prepend(nullptr, nullptr, 0);
+    n20_stream_prepend(nullptr, nullptr, 10);
+    n20_stream_prepend(nullptr, (uint8_t const*)"test", 4);
+}
+
+TEST(StreamTest, StreamInitWithNullStream) {
+    // Should not crash
+    n20_stream_init(nullptr, nullptr, 0);
+    n20_stream_init(nullptr, nullptr, 10);
+    n20_stream_init(nullptr, (uint8_t*)"test", 4);
+}
+
+TEST(StreamTest, StreamPutWithNullStream) {
+    // Should not crash
+    n20_stream_put(nullptr, 0);
+    n20_stream_put(nullptr, 10);
+    n20_stream_put(nullptr, 'A');
+}
+
+TEST(StreamTest, StreamInitWithNullBuffer) {
+    n20_stream_t s;
+    n20_stream_init(&s, nullptr, 100);
+
+    ASSERT_EQ(s.begin, nullptr);
+    ASSERT_EQ(s.size, 0);
+    ASSERT_EQ(s.write_position, 0);
+    ASSERT_TRUE(s.buffer_overflow);
+    ASSERT_TRUE(n20_stream_has_buffer_overflow(&s));
+    ASSERT_FALSE(n20_stream_has_write_position_overflow(&s));
+    ASSERT_EQ(n20_stream_byte_count(&s), 0);
+    ASSERT_EQ(n20_stream_data(&s), nullptr);
+}
+
+TEST(StreamTest, StreamHasBufferOverflowWithNullStream) {
+    // Should not crash
+    ASSERT_TRUE(n20_stream_has_buffer_overflow(nullptr));
+}
+
+TEST(StreamTest, StreamHasWritePositionOverflowWithNullStream) {
+    // Should not crash
+    ASSERT_TRUE(n20_stream_has_write_position_overflow(nullptr));
+}
+
+TEST(StreamTest, StreamByteCountWithNullStream) {
+    // Should not crash
+    ASSERT_EQ(n20_stream_byte_count(nullptr), 0);
+}
+
+TEST(StreamTest, StreamDataWithNullStream) {
+    // Should not crash
+    ASSERT_EQ(n20_stream_data(nullptr), nullptr);
+}
+
 TEST(StreamTest, StreamCounterOverflow) {
     n20_stream_t s;
     uint8_t buffer[128];
@@ -138,6 +194,7 @@ TEST_F(IStreamTest, InitWithValidBuffer) {
 TEST_F(IStreamTest, InitWithNullBuffer) {
     n20_istream_t stream;
     n20_istream_init(&stream, nullptr, 100);
+    n20_slice_t slice;
 
     EXPECT_EQ(stream.begin, nullptr);
     EXPECT_EQ(stream.size, 100);
@@ -147,7 +204,7 @@ TEST_F(IStreamTest, InitWithNullBuffer) {
     uint8_t read_buffer[4];
     EXPECT_FALSE(n20_istream_read(&stream, read_buffer, sizeof(read_buffer)));
     EXPECT_FALSE(n20_istream_get(&stream, &read_buffer[0]));
-    EXPECT_EQ(n20_istream_get_slice(&stream, 4), nullptr);
+    EXPECT_FALSE(n20_istream_get_slice(&stream, &slice, 4));
     EXPECT_EQ(n20_istream_read_position(&stream), 0);
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
 }
@@ -234,6 +291,7 @@ TEST_F(IStreamTest, ReadAfterUnderrun) {
 TEST_F(IStreamTest, ReadWithNullStream) {
     uint8_t buffer[4];
     EXPECT_FALSE(n20_istream_read(nullptr, buffer, 4));
+    EXPECT_FALSE(n20_istream_read(nullptr, buffer, 0));
 }
 
 TEST_F(IStreamTest, GetSingleByte) {
@@ -258,26 +316,29 @@ TEST_F(IStreamTest, GetWithNullStream) {
     EXPECT_FALSE(n20_istream_get(nullptr, &byte));
 }
 
+/* Test n20_istream_get_slice */
+
 TEST_F(IStreamTest, GetSliceValid) {
     n20_istream_t stream;
     n20_istream_init(&stream, test_data.data(), test_data.size());
 
     // Get first 4 bytes
-    uint8_t const* slice = n20_istream_get_slice(&stream, 4);
-    EXPECT_NE(slice, nullptr);
-    EXPECT_EQ(slice, test_data.data());
+    n20_slice_t slice;
+    EXPECT_TRUE(n20_istream_get_slice(&stream, &slice, 4));
+    EXPECT_EQ(slice.buffer, test_data.data());
+    EXPECT_EQ(slice.size, 4);
     EXPECT_EQ(n20_istream_read_position(&stream), 4);
     EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
 
     // Verify slice content
     for (size_t i = 0; i < 4; ++i) {
-        EXPECT_EQ(slice[i], test_data[i]);
+        EXPECT_EQ(slice.buffer[i], test_data[i]);
     }
 
     // Get remaining bytes
-    slice = n20_istream_get_slice(&stream, 4);
-    EXPECT_NE(slice, nullptr);
-    EXPECT_EQ(slice, test_data.data() + 4);
+    EXPECT_TRUE(n20_istream_get_slice(&stream, &slice, 4));
+    EXPECT_EQ(slice.buffer, test_data.data() + 4);
+    EXPECT_EQ(slice.size, 4);
     EXPECT_EQ(n20_istream_read_position(&stream), 8);
     EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
 }
@@ -286,9 +347,10 @@ TEST_F(IStreamTest, GetSliceZeroSize) {
     n20_istream_t stream;
     n20_istream_init(&stream, test_data.data(), test_data.size());
 
-    uint8_t const* slice = n20_istream_get_slice(&stream, 0);
-    EXPECT_NE(slice, nullptr);
-    EXPECT_EQ(slice, test_data.data());
+    n20_slice_t slice;
+    EXPECT_TRUE(n20_istream_get_slice(&stream, &slice, 0));
+    EXPECT_EQ(slice.buffer, test_data.data());
+    EXPECT_EQ(slice.size, 0);
     EXPECT_EQ(n20_istream_read_position(&stream), 0);
     EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
 }
@@ -297,9 +359,10 @@ TEST_F(IStreamTest, GetSliceExactSize) {
     n20_istream_t stream;
     n20_istream_init(&stream, test_data.data(), test_data.size());
 
-    uint8_t const* slice = n20_istream_get_slice(&stream, test_data.size());
-    EXPECT_NE(slice, nullptr);
-    EXPECT_EQ(slice, test_data.data());
+    n20_slice_t slice;
+    EXPECT_TRUE(n20_istream_get_slice(&stream, &slice, test_data.size()));
+    EXPECT_EQ(slice.buffer, test_data.data());
+    EXPECT_EQ(slice.size, test_data.size());
     EXPECT_EQ(n20_istream_read_position(&stream), test_data.size());
     EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
 }
@@ -308,8 +371,8 @@ TEST_F(IStreamTest, GetSliceBeyondBuffer) {
     n20_istream_t stream;
     n20_istream_init(&stream, test_data.data(), test_data.size());
 
-    uint8_t const* slice = n20_istream_get_slice(&stream, test_data.size() + 1);
-    EXPECT_EQ(slice, nullptr);
+    n20_slice_t slice;
+    EXPECT_FALSE(n20_istream_get_slice(&stream, &slice, test_data.size() + 1));
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
     EXPECT_EQ(n20_istream_read_position(&stream), test_data.size());
 }
@@ -319,19 +382,23 @@ TEST_F(IStreamTest, GetSliceAfterUnderrun) {
     n20_istream_init(&stream, test_data.data(), test_data.size());
 
     // Cause underrun
-    uint8_t const* slice = n20_istream_get_slice(&stream, test_data.size() + 1);
-    EXPECT_EQ(slice, nullptr);
+    n20_slice_t slice = {};
+    EXPECT_FALSE(n20_istream_get_slice(&stream, &slice, test_data.size() + 1));
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+    EXPECT_EQ(slice.buffer, nullptr);
+    EXPECT_EQ(slice.size, 0);
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
 
     // Try to get slice again - should fail
-    slice = n20_istream_get_slice(&stream, 1);
-    EXPECT_EQ(slice, nullptr);
+    EXPECT_FALSE(n20_istream_get_slice(&stream, &slice, 1));
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
 }
 
 TEST_F(IStreamTest, GetSliceWithNullStream) {
-    uint8_t const* slice = n20_istream_get_slice(nullptr, 4);
-    EXPECT_EQ(slice, nullptr);
+    n20_slice_t slice = {};
+    EXPECT_FALSE(n20_istream_get_slice(nullptr, &slice, 4));
+    EXPECT_EQ(slice.buffer, nullptr);
+    EXPECT_EQ(slice.size, 0);
 }
 
 TEST_F(IStreamTest, GetSliceOverflowProtection) {
@@ -339,14 +406,134 @@ TEST_F(IStreamTest, GetSliceOverflowProtection) {
     n20_istream_init(&stream, test_data.data(), test_data.size());
 
     // Move to near end of buffer
-    n20_istream_get_slice(&stream, test_data.size() - 1);
+    n20_slice_t slice = {};
+    EXPECT_TRUE(n20_istream_get_slice(&stream, &slice, test_data.size() - 1));
     EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
 
     // Try to get slice that would cause overflow
-    uint8_t const* slice = n20_istream_get_slice(&stream, SIZE_MAX);
-    EXPECT_EQ(slice, nullptr);
+    EXPECT_FALSE(n20_istream_get_slice(&stream, &slice, SIZE_MAX));
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
     EXPECT_EQ(n20_istream_read_position(&stream), test_data.size());
+}
+
+TEST_F(IStreamTest, GetSliceWithNullSliceOut) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    // Valid read with null slice_out
+    EXPECT_TRUE(n20_istream_get_slice(&stream, nullptr, 4));
+    EXPECT_EQ(n20_istream_read_position(&stream), 4);
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+}
+
+/* Test n20_istream_get_string_slice */
+
+TEST_F(IStreamTest, GetStringSliceValid) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    // Get first 4 bytes
+    n20_string_slice_t slice;
+    EXPECT_TRUE(n20_istream_get_string_slice(&stream, &slice, 4));
+    EXPECT_EQ(slice.buffer, (char const*)test_data.data());
+    EXPECT_EQ(slice.size, 4);
+    EXPECT_EQ(n20_istream_read_position(&stream), 4);
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+
+    // Verify slice content
+    for (size_t i = 0; i < 4; ++i) {
+        EXPECT_EQ(slice.buffer[i], test_data[i]);
+    }
+
+    // Get remaining bytes
+    EXPECT_TRUE(n20_istream_get_string_slice(&stream, &slice, 4));
+    EXPECT_EQ(slice.buffer, (char const*)(test_data.data() + 4));
+    EXPECT_EQ(slice.size, 4);
+    EXPECT_EQ(n20_istream_read_position(&stream), 8);
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+}
+
+TEST_F(IStreamTest, GetStringSliceZeroSize) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    n20_string_slice_t slice;
+    EXPECT_TRUE(n20_istream_get_string_slice(&stream, &slice, 0));
+    EXPECT_EQ(slice.buffer, (char const*)test_data.data());
+    EXPECT_EQ(slice.size, 0);
+    EXPECT_EQ(n20_istream_read_position(&stream), 0);
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+}
+
+TEST_F(IStreamTest, GetStringSliceExactSize) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    n20_string_slice_t slice;
+    EXPECT_TRUE(n20_istream_get_string_slice(&stream, &slice, test_data.size()));
+    EXPECT_EQ(slice.buffer, (char const*)test_data.data());
+    EXPECT_EQ(slice.size, test_data.size());
+    EXPECT_EQ(n20_istream_read_position(&stream), test_data.size());
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+}
+
+TEST_F(IStreamTest, GetStringSliceBeyondBuffer) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    n20_string_slice_t slice;
+    EXPECT_FALSE(n20_istream_get_string_slice(&stream, &slice, test_data.size() + 1));
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+    EXPECT_EQ(n20_istream_read_position(&stream), test_data.size());
+}
+
+TEST_F(IStreamTest, GetStringSliceAfterUnderrun) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    // Cause underrun
+    n20_string_slice_t slice = {};
+    EXPECT_FALSE(n20_istream_get_string_slice(&stream, &slice, test_data.size() + 1));
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+    EXPECT_EQ(slice.buffer, nullptr);
+    EXPECT_EQ(slice.size, 0);
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+
+    // Try to get slice again - should fail
+    EXPECT_FALSE(n20_istream_get_string_slice(&stream, &slice, 1));
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+}
+
+TEST_F(IStreamTest, GetStringSliceWithNullStream) {
+    n20_string_slice_t slice = {};
+    EXPECT_FALSE(n20_istream_get_string_slice(nullptr, &slice, 4));
+    EXPECT_EQ(slice.buffer, nullptr);
+    EXPECT_EQ(slice.size, 0);
+}
+
+TEST_F(IStreamTest, GetStringSliceOverflowProtection) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    // Move to near end of buffer
+    n20_string_slice_t slice = {};
+    EXPECT_TRUE(n20_istream_get_string_slice(&stream, &slice, test_data.size() - 1));
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
+
+    // Try to get slice that would cause overflow
+    EXPECT_FALSE(n20_istream_get_string_slice(&stream, &slice, SIZE_MAX));
+    EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
+    EXPECT_EQ(n20_istream_read_position(&stream), test_data.size());
+}
+
+TEST_F(IStreamTest, GetStringSliceWithNullSliceOut) {
+    n20_istream_t stream;
+    n20_istream_init(&stream, test_data.data(), test_data.size());
+
+    // Valid read with null slice_out
+    EXPECT_TRUE(n20_istream_get_string_slice(&stream, nullptr, 4));
+    EXPECT_EQ(n20_istream_read_position(&stream), 4);
+    EXPECT_FALSE(n20_istream_has_buffer_underrun(&stream));
 }
 
 TEST_F(IStreamTest, HasBufferUnderrunWithNullStream) {
@@ -368,11 +555,11 @@ TEST_F(IStreamTest, MixedOperations) {
     EXPECT_EQ(n20_istream_read_position(&stream), 1);
 
     // Get slice
-    uint8_t const* slice = n20_istream_get_slice(&stream, 3);
-    EXPECT_NE(slice, nullptr);
-    EXPECT_EQ(slice[0], 0x02);
-    EXPECT_EQ(slice[1], 0x03);
-    EXPECT_EQ(slice[2], 0x04);
+    n20_slice_t slice = {};
+    EXPECT_TRUE(n20_istream_get_slice(&stream, &slice, 3));
+    EXPECT_EQ(slice.buffer[0], 0x02);
+    EXPECT_EQ(slice.buffer[1], 0x03);
+    EXPECT_EQ(slice.buffer[2], 0x04);
     EXPECT_EQ(n20_istream_read_position(&stream), 4);
 
     // Read multiple bytes
@@ -396,8 +583,10 @@ TEST_F(IStreamTest, EmptyBuffer) {
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
     EXPECT_EQ(n20_istream_read_position(&stream), 0);
 
-    uint8_t const* slice = n20_istream_get_slice(&stream, 1);
-    EXPECT_EQ(slice, nullptr);
+    n20_slice_t slice = {};
+    EXPECT_FALSE(n20_istream_get_slice(&stream, &slice, 1));
+    EXPECT_EQ(slice.buffer, nullptr);
+    EXPECT_EQ(slice.size, 0);
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
 }
 
@@ -410,8 +599,10 @@ TEST_F(IStreamTest, NullBuffer) {
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
     EXPECT_EQ(n20_istream_read_position(&stream), 0);
 
-    uint8_t const* slice = n20_istream_get_slice(&stream, 1);
-    EXPECT_EQ(slice, nullptr);
+    n20_slice_t slice = {};
+    EXPECT_FALSE(n20_istream_get_slice(&stream, &slice, 1));
+    EXPECT_EQ(slice.buffer, nullptr);
+    EXPECT_EQ(slice.size, 0);
     EXPECT_TRUE(n20_istream_has_buffer_underrun(&stream));
 }
 
