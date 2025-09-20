@@ -376,6 +376,11 @@ if (NAT20_WITH_TESTS)
     target_sources(nat20_service_test_bin
         PRIVATE ${LIBNAT20_SERVICE_TEST_SOURCES}
     )
+    if(NAT20_WITH_COVERAGE)
+        target_link_options(nat20_service_test_bin
+            PRIVATE --coverage
+        )
+    endif()
     target_link_libraries(nat20_service_test_bin gtest_main nat20 crypto pki nat20_crypto_boringssl nat20_test_utils nat20_service)
     add_test(NAME nat20_service_test COMMAND nat20_service_test_bin)
 

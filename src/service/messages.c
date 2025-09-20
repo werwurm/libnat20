@@ -93,8 +93,9 @@ n20_error_t n20_msg_promote_request_read_cb(n20_istream_t *istream, int64_t key,
                 /* The compressed context must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            request->compressed_context.size = cbor_value;
-            request->compressed_context.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &request->compressed_context, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         default:
             /* Skip unknown keys. */
@@ -107,7 +108,6 @@ n20_error_t n20_msg_promote_request_read_cb(n20_istream_t *istream, int64_t key,
 
 n20_error_t n20_msg_promote_request_read(n20_istream_t *istream,
                                          n20_msg_promote_request_t *request) {
-
     return n20_msg_read_map_with_int_key(istream, n20_msg_promote_request_read_cb, request);
 }
 
@@ -123,8 +123,9 @@ n20_error_t n20_msg_open_dice_input_read_cb(n20_istream_t *istream, int64_t key,
                 /* The code hash must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            input->code_hash.size = cbor_value;
-            input->code_hash.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &input->code_hash, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_CODE_DESCRIPTOR:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -132,8 +133,9 @@ n20_error_t n20_msg_open_dice_input_read_cb(n20_istream_t *istream, int64_t key,
                 /* The code descriptor must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            input->code_descriptor.size = cbor_value;
-            input->code_descriptor.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &input->code_descriptor, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_CONFIGURATION_HASH:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -141,8 +143,9 @@ n20_error_t n20_msg_open_dice_input_read_cb(n20_istream_t *istream, int64_t key,
                 /* The configuration hash must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            input->configuration_hash.size = cbor_value;
-            input->configuration_hash.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &input->configuration_hash, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_CONFIGURATION_DESCRIPTOR:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -150,8 +153,9 @@ n20_error_t n20_msg_open_dice_input_read_cb(n20_istream_t *istream, int64_t key,
                 /* The configuration descriptor must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            input->configuration_descriptor.size = cbor_value;
-            input->configuration_descriptor.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &input->configuration_descriptor, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_AUTHORITY_HASH:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -159,8 +163,9 @@ n20_error_t n20_msg_open_dice_input_read_cb(n20_istream_t *istream, int64_t key,
                 /* The authority hash must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            input->authority_hash.size = cbor_value;
-            input->authority_hash.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &input->authority_hash, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_AUTHORITY_DESCRIPTOR:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -168,8 +173,9 @@ n20_error_t n20_msg_open_dice_input_read_cb(n20_istream_t *istream, int64_t key,
                 /* The authority descriptor must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            input->authority_descriptor.size = cbor_value;
-            input->authority_descriptor.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &input->authority_descriptor, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_MODE:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -189,8 +195,9 @@ n20_error_t n20_msg_open_dice_input_read_cb(n20_istream_t *istream, int64_t key,
                 /* The hidden field must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            input->hidden.size = cbor_value;
-            input->hidden.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &input->hidden, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_PROFILE_NAME:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -198,8 +205,9 @@ n20_error_t n20_msg_open_dice_input_read_cb(n20_istream_t *istream, int64_t key,
                 /* The profile name must be a string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            input->profile_name.size = cbor_value;
-            input->profile_name.buffer = (char const *)n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_string_slice(istream, &input->profile_name, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         default:
             /* Skip unknown keys. */
@@ -266,9 +274,9 @@ n20_error_t n20_msg_compressed_context_array_read(n20_istream_t *istream,
             /* Each item in the array must be a byte string. */
             return n20_error_unexpected_message_structure_e;
         }
-
-        compressed_context[i].size = cbor_value;
-        compressed_context[i].buffer = n20_istream_get_slice(istream, cbor_value);
+        if (!n20_istream_get_slice(istream, &compressed_context[i], cbor_value)) {
+            return n20_error_unexpected_message_structure_e;
+        }
     }
 
     return n20_error_ok_e;
@@ -332,7 +340,6 @@ n20_error_t n20_msg_issue_cdi_cert_request_read_cb(n20_istream_t *istream,
 
 n20_error_t n20_msg_issue_cdi_cert_request_read(n20_istream_t *istream,
                                                 n20_msg_issue_cdi_cert_request_t *request) {
-
     request->parent_path_length = 0;
     request->issuer_key_type = n20_crypto_key_type_none_e;
     request->subject_key_type = n20_crypto_key_type_none_e;
@@ -388,8 +395,9 @@ n20_error_t n20_msg_issue_eca_cert_request_read_cb(n20_istream_t *istream,
                 /* The challenge must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            request->challenge.size = cbor_value;
-            request->challenge.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &request->challenge, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         default:
             /* Skip unknown keys. */
@@ -458,8 +466,9 @@ n20_error_t n20_msg_issue_eca_ee_cert_request_read_cb(n20_istream_t *istream,
                 /* The name must be a text string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            request->name.size = cbor_value;
-            request->name.buffer = (char const *)n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_string_slice(istream, &request->name, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_KEY_USAGE:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -467,8 +476,9 @@ n20_error_t n20_msg_issue_eca_ee_cert_request_read_cb(n20_istream_t *istream,
                 /* The key usage must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            request->key_usage.size = cbor_value;
-            request->key_usage.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &request->key_usage, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_CHALLENGE:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -476,8 +486,9 @@ n20_error_t n20_msg_issue_eca_ee_cert_request_read_cb(n20_istream_t *istream,
                 /* The challenge must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            request->challenge.size = cbor_value;
-            request->challenge.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &request->challenge, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         default:
             /* Skip unknown keys. */
@@ -490,7 +501,6 @@ n20_error_t n20_msg_issue_eca_ee_cert_request_read_cb(n20_istream_t *istream,
 
 n20_error_t n20_msg_issue_eca_ee_cert_request_read(n20_istream_t *istream,
                                                    n20_msg_issue_eca_ee_cert_request_t *request) {
-
     request->parent_path_length = 0;
     request->issuer_key_type = n20_crypto_key_type_none_e;
     request->subject_key_type = n20_crypto_key_type_none_e;
@@ -534,8 +544,9 @@ n20_error_t n20_msg_eca_ee_sign_request_read_cb(n20_istream_t *istream,
                 /* The name must be a text string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            request->name.size = cbor_value;
-            request->name.buffer = (char const *)n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_string_slice(istream, &request->name, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_KEY_USAGE:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -543,8 +554,9 @@ n20_error_t n20_msg_eca_ee_sign_request_read_cb(n20_istream_t *istream,
                 /* The key usage must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            request->key_usage.size = cbor_value;
-            request->key_usage.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &request->key_usage, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         case N20_MSG_LABEL_MESSAGE:
             if (!n20_cbor_read_header(istream, &cbor_type, &cbor_value) ||
@@ -552,8 +564,9 @@ n20_error_t n20_msg_eca_ee_sign_request_read_cb(n20_istream_t *istream,
                 /* The message must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            request->message.size = cbor_value;
-            request->message.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &request->message, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         default:
             /* Skip unknown keys. */
@@ -870,8 +883,9 @@ n20_error_t n20_msg_issue_cert_response_read_cb(n20_istream_t *istream,
                 /* The certificate must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            response->certificate.size = cbor_value;
-            response->certificate.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &response->certificate, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         default:
             /* Skip unknown keys. */
@@ -1013,8 +1027,9 @@ n20_error_t n20_msg_eca_ee_sign_response_read_cb(n20_istream_t *istream,
                 /* The signature must be a byte string. */
                 return n20_error_unexpected_message_structure_e;
             }
-            response->signature.size = cbor_value;
-            response->signature.buffer = n20_istream_get_slice(istream, cbor_value);
+            if (!n20_istream_get_slice(istream, &response->signature, cbor_value)) {
+                return n20_error_unexpected_message_structure_e;
+            }
             break;
         default:
             /* Skip unknown keys. */
