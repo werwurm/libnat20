@@ -18,6 +18,7 @@
 
 /** @file */
 
+#include <nat20/types.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -240,7 +241,7 @@ extern void n20_stream_put(n20_stream_t *s, uint8_t c);
  * A `n20_istream` is used to safely extract data from a
  * buffer of a given size.
  */
-typedef struct n20_istream_s {
+struct n20_istream_s {
     /**
      * @brief Points to the beginning of the underlying buffer.
      *
@@ -265,7 +266,12 @@ typedef struct n20_istream_s {
      *
      */
     bool buffer_underrun;
-} n20_istream_t;
+};
+
+/**
+ * @brief Alias for @ref n20_istream_s
+ */
+typedef struct n20_istream_s n20_istream_t;
 
 /**
  * @brief Initialize an @ref n20_istream_t structure.
@@ -341,20 +347,40 @@ extern bool n20_istream_get(n20_istream_t *s, uint8_t *c);
 /** @brief Gets a buffer slice from the input stream.
  *
  * This function advances the read position of the input stream by the
- * specified size and returns a slice of the input stream buffer.
+ * specified size and returns a true if the stream is in a good state
+ * and has @p size or more bytes available.
  *
  * If @p size exceeds the data available in the stream, the function
- * returns NULL.
+ * returns false.
  *
  * If @p s was not initialized with @ref n20_istream_init the behavior
  * is undefined.
  *
+ * if @p slice_out is not NULL and the function returns true,
+ * the slice_out structure will point to the slice of the stream
+ * buffer beginning at the current read position and of size @p size.
+ *
  * @param s The input stream to read from.
+ * @param slice_out Pointer to a slice structure that will be populated
+ * with the slice information if the function returns true.
  * @param size The size of the slice to read.
- * @return A pointer to the slice of the input stream buffer or NULL if
- * the read operation exceeds the available data in the stream.
+ * @return true if the read operation was successful, false otherwise.
  */
-extern uint8_t const *n20_istream_get_slice(n20_istream_t *s, size_t size);
+extern bool n20_istream_get_slice(n20_istream_t *s, n20_slice_t *slice_out, size_t size);
+
+/** @brief Gets a buffer slice from the input stream.
+ *
+ * This function works like @ref n20_istream_get_slice but for string slices.
+ *
+ * @param s The input stream to read from.
+ * @param slice_out Pointer to a slice structure that will be populated
+ * with the slice information if the function returns true.
+ * @param size The size of the slice to read.
+ * @return true if the read operation was successful, false otherwise.
+ */
+extern bool n20_istream_get_string_slice(n20_istream_t *s,
+                                         n20_string_slice_t *slice_out,
+                                         size_t size);
 
 /**
  * @brief Checks if the input stream has encountered a buffer underrun.

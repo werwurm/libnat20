@@ -182,8 +182,7 @@ bool n20_cbor_read_skip_item(n20_istream_t *const s) {
                 /* Prevent uncaught truncation. */
                 return false;
             }
-            uint8_t const *slice = n20_istream_get_slice(s, n);
-            if (slice == NULL) {
+            if (!n20_istream_get_slice(s, NULL, n)) {
                 return false;
             }
             break;

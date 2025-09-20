@@ -91,16 +91,23 @@ void n20_istream_init(n20_istream_t *s, uint8_t const *buffer, size_t buffer_siz
     s->buffer_underrun = buffer == NULL && buffer_size != 0;
 }
 
-bool n20_istream_read(n20_istream_t *s, uint8_t *buffer, size_t buffer_size) {
-    if (s == NULL || s->buffer_underrun) return false;
-    size_t new_position = s->read_position + buffer_size;
-    if (new_position > s->size || new_position < s->read_position) {
+static void *n20_advance_stream(n20_istream_t *s, size_t const size) {
+    if (s == NULL || s->buffer_underrun) return NULL;
+    size_t old_position = s->read_position;
+    s->read_position += size;
+    if (s->read_position > s->size || s->read_position < old_position) {
         s->read_position = s->size;
         s->buffer_underrun = true;
-        return false;
+        return NULL;
     }
-    memcpy(buffer, s->begin + s->read_position, buffer_size);
-    s->read_position = new_position;
+    return (void *)(s->begin + old_position);
+}
+
+bool n20_istream_read(n20_istream_t *s, uint8_t *buffer, size_t buffer_size) {
+    if (buffer_size == 0 && s != NULL && !s->buffer_underrun) return true;
+    void *data = n20_advance_stream(s, buffer_size);
+    if (data == NULL) return false;
+    memcpy(buffer, data, buffer_size);
     return true;
 }
 
@@ -108,17 +115,26 @@ bool n20_istream_get(n20_istream_t *s, uint8_t *c) {
     return n20_istream_read(s, c, /*buffer_size=*/1);
 }
 
-uint8_t const *n20_istream_get_slice(n20_istream_t *s, size_t size) {
-    if (s == NULL || s->buffer_underrun) return NULL;
-    size_t new_position = s->read_position + size;
-    if (new_position > s->size || new_position < s->read_position) {
-        s->read_position = s->size;
-        s->buffer_underrun = true;
-        return NULL;
+bool n20_istream_get_slice(n20_istream_t *s, n20_slice_t *const slice_out, size_t const size) {
+    void *data = n20_advance_stream(s, size);
+    if (data == NULL) return false;
+    if (slice_out != NULL) {
+        slice_out->size = size;
+        slice_out->buffer = (uint8_t const *)data;
     }
-    uint8_t const *slice = s->begin + s->read_position;
-    s->read_position = new_position;
-    return slice;
+    return true;
+}
+
+bool n20_istream_get_string_slice(n20_istream_t *s,
+                                  n20_string_slice_t *const slice_out,
+                                  size_t const size) {
+    void *data = n20_advance_stream(s, size);
+    if (data == NULL) return false;
+    if (slice_out != NULL) {
+        slice_out->size = size;
+        slice_out->buffer = (char const *)data;
+    }
+    return true;
 }
 
 bool n20_istream_has_buffer_underrun(n20_istream_t const *s) {
