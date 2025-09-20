@@ -17,15 +17,10 @@
 #include <gtest/gtest.h>
 #include <nat20/cbor.h>
 #include <nat20/stream.h>
-#include <sys/types.h>
 
-#include <cstdint>
-#include <initializer_list>
 #include <tuple>
 #include <variant>
 #include <vector>
-
-#include "gtest/gtest.h"
 
 class CborHeaderTestFixture
     : public testing::TestWithParam<std::tuple<n20_cbor_type_t, uint64_t, std::vector<uint8_t>>> {};
