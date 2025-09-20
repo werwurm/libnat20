@@ -17,11 +17,15 @@
 #include <gtest/gtest.h>
 #include <nat20/cbor.h>
 #include <nat20/stream.h>
+#include <sys/types.h>
 
 #include <cstdint>
+#include <initializer_list>
 #include <tuple>
 #include <variant>
 #include <vector>
+
+#include "gtest/gtest.h"
 
 class CborHeaderTestFixture
     : public testing::TestWithParam<std::tuple<n20_cbor_type_t, uint64_t, std::vector<uint8_t>>> {};
@@ -256,6 +260,34 @@ TEST(CborTests, CborWriteByteStringTest) {
     ASSERT_EQ(got_encoding, want_encoding);
 }
 
+TEST(CborTests, CborWriteMalformedSliceByteStringTest) {
+    uint8_t buffer[20];
+
+    n20_stream_t s;
+    n20_stream_init(&s, &buffer[0], sizeof(buffer));
+
+    n20_cbor_write_byte_string(&s, {.size = 4, .buffer = nullptr});
+
+    ASSERT_FALSE(n20_stream_has_buffer_overflow(&s));
+    size_t bytes_written = n20_stream_byte_count(&s);
+    auto got_encoding = std::vector(n20_stream_data(&s), n20_stream_data(&s) + bytes_written);
+    ASSERT_EQ(got_encoding, std::vector<uint8_t>{0xf6});
+}
+
+TEST(CborTests, CborWriteEmptySliceByteStringTest) {
+    uint8_t buffer[20];
+
+    n20_stream_t s;
+    n20_stream_init(&s, &buffer[0], sizeof(buffer));
+
+    n20_cbor_write_byte_string(&s, {.size = 0, .buffer = nullptr});
+
+    ASSERT_FALSE(n20_stream_has_buffer_overflow(&s));
+    size_t bytes_written = n20_stream_byte_count(&s);
+    auto got_encoding = std::vector(n20_stream_data(&s), n20_stream_data(&s) + bytes_written);
+    ASSERT_EQ(got_encoding, std::vector<uint8_t>{0x40});
+}
+
 TEST(CborTests, CborWriteStringTest) {
     uint8_t buffer[20];
 
@@ -273,6 +305,34 @@ TEST(CborTests, CborWriteStringTest) {
 
     ASSERT_EQ(bytes_written, 6);
     ASSERT_EQ(got_encoding, want_encoding);
+}
+
+TEST(CborTests, CborWriteMalformedSliceTextStringTest) {
+    uint8_t buffer[20];
+
+    n20_stream_t s;
+    n20_stream_init(&s, &buffer[0], sizeof(buffer));
+
+    n20_cbor_write_text_string(&s, {.size = 4, .buffer = nullptr});
+
+    ASSERT_FALSE(n20_stream_has_buffer_overflow(&s));
+    size_t bytes_written = n20_stream_byte_count(&s);
+    auto got_encoding = std::vector(n20_stream_data(&s), n20_stream_data(&s) + bytes_written);
+    ASSERT_EQ(got_encoding, std::vector<uint8_t>{0xf6});
+}
+
+TEST(CborTests, CborWriteEmptySliceTextStringTest) {
+    uint8_t buffer[20];
+
+    n20_stream_t s;
+    n20_stream_init(&s, &buffer[0], sizeof(buffer));
+
+    n20_cbor_write_text_string(&s, {.size = 0, .buffer = nullptr});
+
+    ASSERT_FALSE(n20_stream_has_buffer_overflow(&s));
+    size_t bytes_written = n20_stream_byte_count(&s);
+    auto got_encoding = std::vector(n20_stream_data(&s), n20_stream_data(&s) + bytes_written);
+    ASSERT_EQ(got_encoding, std::vector<uint8_t>{0x60});
 }
 
 class CborArrayHeaderTestFixture
@@ -676,6 +736,13 @@ TEST_F(CborReadTest, SkipNestedMap) {
     EXPECT_EQ(value, 4);
 }
 
+TEST_F(CborReadTest, FailOnMapWithMissingElement) {
+    WriteCborData({0xA2, 0x01, 0x02});  // map expecting 2 key-value pairs, only 1 present
+    CreateStream();
+
+    EXPECT_FALSE(n20_cbor_read_skip_item(&stream));
+}
+
 TEST_F(CborReadTest, SkipTag) {
     WriteCborData({0xC1, 0x05, 0x06});  // tag 1, uint 5, uint 6
     CreateStream();
@@ -786,11 +853,9 @@ TEST_F(CborReadTest, SkipLargeArray) {
     EXPECT_TRUE(n20_cbor_read_skip_item(&stream));
 
     // Should be positioned at marker
-    n20_cbor_type_t type;
-    uint64_t value;
-    EXPECT_TRUE(n20_cbor_read_header(&stream, &type, &value));
-    EXPECT_EQ(type, n20_cbor_type_simple_float_e);
-    EXPECT_EQ(value, 31);  // 0xFF & 0x1F = 31
+    uint8_t got_marker;
+    EXPECT_TRUE(n20_istream_read(&stream, &got_marker, 1));
+    EXPECT_EQ(got_marker, 0xFF);
 }
 
 TEST_F(CborReadTest, SkipZeroLengthStrings) {
@@ -806,6 +871,38 @@ TEST_F(CborReadTest, SkipZeroLengthStrings) {
     EXPECT_TRUE(n20_cbor_read_header(&stream, &type, &value));
     EXPECT_EQ(type, n20_cbor_type_uint_e);
     EXPECT_EQ(value, 1);
+}
+
+class CborInvalidHeaderTestFixture
+    : public CborReadTest,
+      public testing::WithParamInterface<std::tuple<n20_cbor_type_t, uint8_t>> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    FailOnInvalidHeaderByteTestsInstance,
+    CborInvalidHeaderTestFixture,
+    testing::Combine(testing::Values(n20_cbor_type_uint_e,
+                                     n20_cbor_type_nint_e,
+                                     n20_cbor_type_bytes_e,
+                                     n20_cbor_type_string_e,
+                                     n20_cbor_type_array_e,
+                                     n20_cbor_type_map_e,
+                                     n20_cbor_type_tag_e,
+                                     n20_cbor_type_simple_float_e),
+                     testing::Values(28, 29, 30, 31)),
+    [](testing::TestParamInfo<CborInvalidHeaderTestFixture::ParamType> const& info) {
+        return std::to_string(std::get<0>(info.param)) + "_" +
+               std::to_string(std::get<1>(info.param));
+    });
+
+TEST_P(CborInvalidHeaderTestFixture, FailOnInvalidHeaderByte) {
+    auto [major_type, addl_info] = GetParam();
+    uint8_t invalid_header = (major_type << 5) | addl_info;
+    WriteCborData({invalid_header});
+    CreateStream();
+
+    n20_cbor_type_t type;
+    uint64_t value;
+    EXPECT_FALSE(n20_cbor_read_header(&stream, &type, &value));
 }
 
 // Parameterized tests for various CBOR types
