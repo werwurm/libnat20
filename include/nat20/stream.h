@@ -378,7 +378,9 @@ extern bool n20_istream_get_slice(n20_istream_t *s, n20_slice_t *slice_out, size
  * @param size The size of the slice to read.
  * @return true if the read operation was successful, false otherwise.
  */
-extern bool n20_istream_get_string_slice(n20_istream_t *s, n20_string_slice_t *slice_out, size_t size);
+extern bool n20_istream_get_string_slice(n20_istream_t *s,
+                                         n20_string_slice_t *slice_out,
+                                         size_t size);
 
 /**
  * @brief Checks if the input stream has encountered a buffer underrun.
