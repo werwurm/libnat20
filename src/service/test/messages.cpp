@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 #include <nat20/cbor.h>
+#include <nat20/error.h>
 #include <nat20/service/messages.h>
 #include <nat20/stream.h>
 
@@ -614,3 +615,329 @@ INSTANTIATE_TEST_SUITE_P(AllRequestTypes,
                                          n20_msg_request_type_issue_eca_cert_e,
                                          n20_msg_request_type_issue_eca_ee_cert_e,
                                          n20_msg_request_type_eca_ee_sign_e));
+
+namespace std {
+
+std::string to_string(n20_msg_request_type_t type) {
+    switch (type) {
+        case n20_msg_request_type_none_e:
+            return "none";
+        case n20_msg_request_type_promote_e:
+            return "promote";
+        case n20_msg_request_type_issue_cdi_cert_e:
+            return "issue_cdi_cert";
+        case n20_msg_request_type_issue_eca_cert_e:
+            return "issue_eca_cert";
+        case n20_msg_request_type_issue_eca_ee_cert_e:
+            return "issue_eca_ee_cert";
+        case n20_msg_request_type_eca_ee_sign_e:
+            return "eca_ee_sign";
+        default:
+            return "unknown";
+    }
+}
+
+}  // namespace std
+class ReadMalformedRequestTestFixture
+    : public MessagesTest,
+      public testing::WithParamInterface<std::tuple<n20_msg_request_type_t, uint64_t>> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    ReadMalformedRequestTestInstance,
+    ReadMalformedRequestTestFixture,
+    testing::Combine(testing::Values(n20_msg_request_type_promote_e,
+                                     n20_msg_request_type_issue_cdi_cert_e,
+                                     n20_msg_request_type_issue_eca_cert_e,
+                                     n20_msg_request_type_issue_eca_ee_cert_e,
+                                     n20_msg_request_type_eca_ee_sign_e),
+                     testing::Values(1, 2, 3, 4, 5, 6, 7, 8, 9, 19)),
+    [](testing::TestParamInfo<ReadMalformedRequestTestFixture::ParamType> const& info) {
+        return std::to_string(std::get<0>(info.param)) + "_" +
+               std::to_string(std::get<1>(info.param));
+    });
+
+TEST_P(ReadMalformedRequestTestFixture, MalformedRequestHandling) {
+    auto [request_type, field] = GetParam();
+
+    std::vector<uint8_t> cbor_data = {
+        0x82,                                // Array of 2 items
+        static_cast<uint8_t>(request_type),  // Request type
+        0xA1,                                // Map with one element
+    };
+
+    // Missing field key
+    WriteTestCborMessage(cbor_data);
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    // Unexpected field key failing to skip due to lack of value.
+    cbor_data.push_back(0xf7);  // Add "undefined" value as map key
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    // Successfully skip an unexpected field.
+    cbor_data.push_back(0xf7);  // Add "undefined" value as map value
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_ok_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data.pop_back();
+    cbor_data.pop_back();
+    cbor_data.push_back(0x20);  // Add -1 as map key
+    cbor_data.push_back(0xf7);  // Add "undefined" value as map value
+
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_ok_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data.pop_back();
+    cbor_data.pop_back();
+    cbor_data.push_back(static_cast<uint8_t>(field));  // Field key
+
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    n20_error_t wanted_error = n20_error_unexpected_message_structure_e;
+
+    // Some fields are unexpected by certain request types and will be ignored.
+    // In those cases n20_error_ok_e is expected.
+    switch (request_type) {
+        case n20_msg_request_type_promote_e:
+            if (field != 19) wanted_error = n20_error_ok_e;
+            break;
+        case n20_msg_request_type_issue_cdi_cert_e:
+            switch (field) {
+                case 6:
+                case 7:
+                case 8:
+                case 9:
+                case 19:
+                    wanted_error = n20_error_ok_e;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case n20_msg_request_type_issue_eca_cert_e:
+            switch (field) {
+                case 3:
+                case 6:
+                case 7:
+                case 9:
+                case 19:
+                    wanted_error = n20_error_ok_e;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case n20_msg_request_type_issue_eca_ee_cert_e:
+            switch (field) {
+                case 3:
+                case 9:
+                case 19:
+                    wanted_error = n20_error_ok_e;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case n20_msg_request_type_eca_ee_sign_e:
+            switch (field) {
+                case 1:
+                case 3:
+                case 5:
+                case 8:
+                case 19:
+                    wanted_error = n20_error_ok_e;
+                    break;
+                default:
+                    break;
+            }
+            break;
+            break;
+        default:
+            break;
+    }
+
+    // Add "undefined" to make it a valid CBOR item that is never expected.
+    cbor_data.push_back(0xf7);
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(wanted_error, n20_msg_request_read(&request, test_slice));
+}
+
+TEST_F(MessagesTest, ReadTruncatedSliceInPromoteRequest) {
+    // Truncated Challenge field 8
+    WriteTestCborMessage({0x82, 0x01, 0xA1, 0x13, 0x42, 'a'});
+
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+}
+
+TEST_F(MessagesTest, ReadTruncatedSliceInIssueEcaCertRequest) {
+    // Truncated Challenge field 8
+    WriteTestCborMessage({0x82, 0x03, 0xA1, 0x08, 0x42, 'a'});
+
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+}
+
+TEST_F(MessagesTest, ReadTruncatedSliceInIssueEcaEeCertRequest) {
+    // Truncated Label field 6
+    WriteTestCborMessage({0x82, 0x04, 0xA1, 0x06, 0x62, 'a'});
+
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    // Truncated Key Usage field 7
+    WriteTestCborMessage({0x82, 0x04, 0xA1, 0x07, 0x42, 'a'});
+
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    // Truncated Challenge field 8
+    WriteTestCborMessage({0x82, 0x04, 0xA1, 0x08, 0x42, 'a'});
+
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+}
+
+TEST_F(MessagesTest, ReadTruncatedSliceInEcaEeSignRequest) {
+    // Truncated Label field 6
+    WriteTestCborMessage({0x82, 0x05, 0xA1, 0x06, 0x62, 'a'});
+
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    // Truncated Key Usage field 7
+    WriteTestCborMessage({0x82, 0x05, 0xA1, 0x07, 0x42, 'a'});
+
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    // Truncated Message field 9
+    WriteTestCborMessage({0x82, 0x05, 0xA1, 0x09, 0x42, 'a'});
+
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+}
+
+class ReadMalformedDiceInputTestFixture : public MessagesTest,
+                                          public testing::WithParamInterface<uint64_t> {};
+
+INSTANTIATE_TEST_SUITE_P(ReadMalformedDiceInputTestInstance,
+                         ReadMalformedDiceInputTestFixture,
+                         testing::Values(10, 11, 12, 13, 14, 15, 16, 17, 18));
+
+TEST_P(ReadMalformedDiceInputTestFixture, MalformedDiceInputHandling) {
+    auto field = GetParam();
+
+    std::vector<uint8_t> cbor_data = {
+        0x82,                                   // Array of 2 items
+        n20_msg_request_type_issue_cdi_cert_e,  // Request type
+        0xA1,                                   // Map with one element
+        0x03,                                   // Field 3 (open dice input)
+        0xA1,                                   // Map with one element
+        static_cast<uint8_t>(field)  // Field number (all fields are in the simple positive range)
+    };
+
+    WriteTestCborMessage(cbor_data);
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data.push_back(
+        0xf7);  // Add "undefined" to make it a valid CBOR item that is never expected.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data.pop_back();
+    if (field == 16 /* mode */) {
+        cbor_data.push_back(0x0f);  // Invalid mode value
+    } else if (field == 18) {
+        cbor_data.push_back(0x62);  // Add a truncated text string
+    } else {
+        cbor_data.push_back(0x42);  // Add a truncated byte string
+    }
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+}
+
+TEST_F(MessagesTest, ReadDiceInputWithUnknownField) {
+    std::vector<uint8_t> cbor_data = {
+        0x82,                                   // Array of 2 items
+        n20_msg_request_type_issue_cdi_cert_e,  // Request type
+        0xA1,                                   // Map with one element
+        0x03,                                   // Field 3 (open dice input)
+        0xA1,                                   // Map with one element
+        0x18,                                   // Unknown field
+        0xFF                                    // Field number (255)
+    };
+
+    // The unknown field is truncated and fails to be skipped.
+    WriteTestCborMessage(cbor_data);
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data.push_back(0xf6);  // Add "null" to make it a valid CBOR item that is ignored.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_ok_e, n20_msg_request_read(&request, test_slice));
+}
+
+class CompressedContextPathTestFixture
+    : public MessagesTest,
+      public testing::WithParamInterface<n20_msg_request_type_t> {};
+
+INSTANTIATE_TEST_SUITE_P(CompressedContextPathTooLongTestInstance,
+                         CompressedContextPathTestFixture,
+                         testing::Values(n20_msg_request_type_issue_cdi_cert_e,
+                                         n20_msg_request_type_issue_eca_cert_e,
+                                         n20_msg_request_type_issue_eca_ee_cert_e,
+                                         n20_msg_request_type_eca_ee_sign_e));
+
+TEST_P(CompressedContextPathTestFixture, CompressedContextPathTooLong) {
+    auto request_type = GetParam();
+    // Create a promote request with a compressed context that is too long
+
+    // If this ASSERTION fails, the N20_STATELESS_MAX_PATH_LENGTH constant
+    // was set larger than the maximum simple integer value that can be
+    // encoded in a single byte (23). The test code below would need to be updated
+    // to handle multi-byte integer encoding.
+    ASSERT_LE(N20_STATELESS_MAX_PATH_LENGTH + 1, 23);
+
+    std::vector<uint8_t> cbor_data = {
+        0x82,                                        // Array of 2 items
+        static_cast<uint8_t>(request_type),          // Request type
+        0xA1,                                        // Map with one element
+        0x04,                                        // Field 4 parent path
+        0x80 | (N20_STATELESS_MAX_PATH_LENGTH + 1),  // Array of max path length + 1
+    };
+
+    WriteTestCborMessage(cbor_data);
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_parent_path_size_exceeds_max_e, n20_msg_request_read(&request, test_slice));
+}
+
+TEST_P(CompressedContextPathTestFixture, CompressedContextMalformed) {
+    auto request_type = GetParam();
+    // Create a promote request with a compressed context that is too long
+
+    // If this ASSERTION fails, the N20_STATELESS_MAX_PATH_LENGTH constant
+    // was set less then 2. The test code below would need to be updated to handle that case.
+    ASSERT_GE(N20_STATELESS_MAX_PATH_LENGTH, 2);
+
+    std::vector<uint8_t> cbor_data = {
+        0x82,                                // Array of 2 items
+        static_cast<uint8_t>(request_type),  // Request type
+        0xA1,                                // Map with one element
+        0x04,                                // Field 4 parent path
+        0x82,                                // Array of size 2
+        0x01,                                // Not a byte string
+    };
+
+    WriteTestCborMessage(cbor_data);
+    n20_msg_request_t request = {};
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    // Missing array item
+    cbor_data.pop_back();
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data.push_back(0x42);  // Truncated byte string of size 2
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+}
