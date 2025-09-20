@@ -187,18 +187,36 @@ target_compile_options(nat20
     PRIVATE -Werror
 )
 
-if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
-    target_compile_options(nat20
-        PRIVATE --coverage
-    )
-    target_link_options(nat20
-        PRIVATE --coverage
-    )
-endif()
-
 target_include_directories(nat20
     PUBLIC include
 )
+
+if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
+    add_library(nat20_coverage STATIC)
+
+    target_sources(nat20_coverage
+        PRIVATE ${LIBNAT20_SOURCES}
+        INTERFACE ${LIBNAT20_PUB_HEADERS}
+    )
+
+    target_compile_options(nat20_coverage
+        PRIVATE -pedantic
+        PRIVATE -Wall
+        PRIVATE -Wextra
+        PRIVATE -Werror
+    )
+
+    target_compile_options(nat20_coverage
+        PRIVATE --coverage
+    )
+    target_link_options(nat20_coverage
+        PRIVATE --coverage
+    )
+    target_include_directories(nat20_coverage
+        PUBLIC include
+    )
+endif()
+
 
 ###################################################################################################
 
@@ -219,15 +237,6 @@ target_compile_options(nat20_service
     PRIVATE -Werror
 )
 
-if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
-    target_compile_options(nat20_service
-        PRIVATE --coverage
-    )
-    target_link_options(nat20_service
-        PRIVATE --coverage
-    )
-endif()
-
 # Add -DN20_STATELESS_MAX_PATH_LENGTH=<value> to the compiler command line.
 target_compile_definitions(nat20_service
     PUBLIC N20_STATELESS_MAX_PATH_LENGTH=${NAT20_STATELESS_MAX_PATH_LENGTH}
@@ -238,6 +247,41 @@ target_include_directories(nat20_service
 )
 
 target_link_libraries(nat20_service nat20)
+
+if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
+    add_library(nat20_service_coverage STATIC)
+
+    target_sources(nat20_service_coverage
+        PRIVATE ${LIBNAT20_SERVICE_SOURCES}
+        INTERFACE ${LIBNAT20_SERVICE_PUB_HEADERS}
+    )
+
+    target_compile_options(nat20_service_coverage
+        PRIVATE -pedantic
+        PRIVATE -Wall
+        PRIVATE -Wextra
+        PRIVATE -Werror
+    )
+
+    # Add -DN20_STATELESS_MAX_PATH_LENGTH=<value> to the compiler command line.
+    target_compile_definitions(nat20_service_coverage
+        PUBLIC N20_STATELESS_MAX_PATH_LENGTH=${NAT20_STATELESS_MAX_PATH_LENGTH}
+    )
+
+    target_include_directories(nat20_service_coverage
+        PUBLIC include
+    )
+
+    target_link_libraries(nat20_service_coverage nat20)
+
+    target_compile_options(nat20_service_coverage
+        PRIVATE --coverage
+    )
+    target_link_options(nat20_service_coverage
+        PRIVATE --coverage
+    )
+endif()
+
 
 ###################################################################################################
 
@@ -259,18 +303,36 @@ target_compile_options(nat20_crypto_nat20
     PRIVATE -Werror
 )
 
-if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
-    target_compile_options(nat20_crypto_nat20
-        PRIVATE --coverage
-    )
-    target_link_options(nat20_crypto_nat20
-        PRIVATE --coverage
-    )
-endif()
-
 target_include_directories(nat20_crypto_nat20
     PUBLIC include
 )
+
+if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
+    add_library(nat20_crypto_nat20_coverage STATIC)
+
+    target_sources(nat20_crypto_nat20_coverage
+        PRIVATE ${LIBNAT20_CRYPTO_NAT20_SOURCES}
+        INTERFACE ${LIBNAT20_CRYPTO_NAT20_PUB_HEADERS}
+    )
+
+    target_compile_options(nat20_crypto_nat20_coverage
+        PRIVATE -pedantic
+        PRIVATE -Wall
+        PRIVATE -Wextra
+        PRIVATE -Werror
+    )
+
+    target_include_directories(nat20_crypto_nat20_coverage
+        PUBLIC include
+    )
+
+    target_compile_options(nat20_crypto_nat20_coverage
+        PRIVATE --coverage
+    )
+    target_link_options(nat20_crypto_nat20_coverage
+        PRIVATE --coverage
+    )
+endif()
 
 ###################################################################################################
 
@@ -302,20 +364,42 @@ if(NAT20_WITH_TESTS OR NAT20_WITH_CRYPTO_BSSL)
         PRIVATE -Werror
     )
 
-    if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
-        target_compile_options(nat20_crypto_boringssl
-            PRIVATE --coverage
-        )
-        target_link_options(nat20_crypto_boringssl
-            PRIVATE --coverage
-        )
-    endif()
 
     target_include_directories(nat20_crypto_boringssl
         PUBLIC include
     )
 
     target_link_libraries(nat20_crypto_boringssl crypto)
+
+    if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
+        add_library(nat20_crypto_boringssl_coverage)
+
+        target_sources(nat20_crypto_boringssl_coverage
+            PRIVATE ${LIBNAT20_CRYPTO_BSSL_SOURCES}
+            INTERFACE ${LIBNAT20_PUB_CRYPTO_BSSL_HEADERS}
+        )
+
+        target_compile_options(nat20_crypto_boringssl_coverage
+            PRIVATE -pedantic
+            PRIVATE -Wall
+            PRIVATE -Wextra
+            PRIVATE -Werror
+        )
+
+
+        target_include_directories(nat20_crypto_boringssl_coverage
+            PUBLIC include
+        )
+
+        target_link_libraries(nat20_crypto_boringssl_coverage crypto)
+
+        target_compile_options(nat20_crypto_boringssl_coverage
+            PRIVATE --coverage
+        )
+        target_link_options(nat20_crypto_boringssl_coverage
+            PRIVATE --coverage
+        )
+    endif()
 
     add_definitions(-DN20_CONFIG_WITH_BSSL=1)
 endif()
@@ -367,8 +451,11 @@ if (NAT20_WITH_TESTS)
         target_link_options(nat20_test_bin
             PRIVATE --coverage
         )
+        target_link_libraries(nat20_test_bin nat20_coverage)
+    else()
+        target_link_libraries(nat20_test_bin nat20)
     endif()
-    target_link_libraries(nat20_test_bin gtest_main nat20 crypto pki nat20_crypto_boringssl nat20_test_utils)
+    target_link_libraries(nat20_test_bin gtest_main crypto pki nat20_crypto_boringssl nat20_test_utils)
 
     add_test(NAME nat20_test COMMAND nat20_test_bin)
 
@@ -380,8 +467,11 @@ if (NAT20_WITH_TESTS)
         target_link_options(nat20_service_test_bin
             PRIVATE --coverage
         )
+        target_link_libraries(nat20_service_test_bin nat20_service_coverage)
+    else()
+        target_link_libraries(nat20_service_test_bin nat20_service)
     endif()
-    target_link_libraries(nat20_service_test_bin gtest_main nat20 crypto pki nat20_crypto_boringssl nat20_test_utils nat20_service)
+    target_link_libraries(nat20_service_test_bin gtest_main nat20 crypto pki nat20_crypto_boringssl nat20_test_utils)
     add_test(NAME nat20_service_test COMMAND nat20_service_test_bin)
 
 
@@ -400,13 +490,21 @@ if (NAT20_WITH_TESTS)
     target_sources(nat20_crypto_test_bin
         PRIVATE src/crypto/test/crypto_boringssl.cpp
     )
-    target_link_libraries(nat20_crypto_test_bin nat20_crypto_boringssl)
+    if(NAT20_WITH_COVERAGE)
+        target_link_libraries(nat20_crypto_test_bin nat20_crypto_boringssl_coverage)
+    else()
+        target_link_libraries(nat20_crypto_test_bin nat20_crypto_boringssl)
+    endif()
     add_definitions(-DN20_CONFIG_ENABLE_CRYPTO_TEST_IMPL=1)
 
     target_sources(nat20_crypto_test_bin
         PRIVATE src/crypto/test/crypto_nat20.cpp
     )
-    target_link_libraries(nat20_crypto_test_bin nat20_crypto_nat20)
+    if(NAT20_WITH_COVERAGE)
+        target_link_libraries(nat20_crypto_test_bin nat20_crypto_nat20_coverage)
+    else()
+        target_link_libraries(nat20_crypto_test_bin nat20_crypto_nat20)
+    endif()
 
     if(NAT20_WITH_COVERAGE)
         find_program(LCOV_EXECUTABLE lcov)
@@ -442,6 +540,7 @@ if (NAT20_WITH_TESTS)
             # Make sure this target depends on the main test executable
             DEPENDS nat20_test_bin
             DEPENDS nat20_crypto_test_bin
+            DEPENDS nat20_service_test_bin
         )
     endif()
 
