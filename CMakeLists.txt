@@ -31,6 +31,11 @@ option(NAT20_WITH_DOCS "Create the documentation target." OFF)
 # on the `cmake -B` command line.
 option(NAT20_WITH_CRYPTO_BSSL "Compile the crypto reference implementation." OFF)
 
+# Enable code coverage reporting by specifying
+# -DNAT20_WITH_COVERAGE=ON on the `cmake -B` command line.
+# This option is only valid when building the test suite.
+option(NAT20_WITH_COVERAGE "Enable code coverage reporting." OFF)
+
 # This option controls the maximum path length for stateless service implementations.
 # In stateless service implementations, all of the context required to derive the effective
 # CDI must be provided in the request. This means a request is potentially unbounded in size.
@@ -76,6 +81,7 @@ set(LIBNAT20_PUB_HEADERS
     include/nat20/crypto.h
     include/nat20/error.h
     include/nat20/oid.h
+    include/nat20/open_dice.h
     include/nat20/stream.h
     include/nat20/types.h
     include/nat20/x509_ext_open_dice_input.h
@@ -181,6 +187,15 @@ target_compile_options(nat20
     PRIVATE -Werror
 )
 
+if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
+    target_compile_options(nat20
+        PRIVATE --coverage
+    )
+    target_link_options(nat20
+        PRIVATE --coverage
+    )
+endif()
+
 target_include_directories(nat20
     PUBLIC include
 )
@@ -203,6 +218,15 @@ target_compile_options(nat20_service
     PRIVATE -Wextra
     PRIVATE -Werror
 )
+
+if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
+    target_compile_options(nat20_service
+        PRIVATE --coverage
+    )
+    target_link_options(nat20_service
+        PRIVATE --coverage
+    )
+endif()
 
 # Add -DN20_STATELESS_MAX_PATH_LENGTH=<value> to the compiler command line.
 target_compile_definitions(nat20_service
@@ -234,6 +258,15 @@ target_compile_options(nat20_crypto_nat20
     PRIVATE -Wextra
     PRIVATE -Werror
 )
+
+if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
+    target_compile_options(nat20_crypto_nat20
+        PRIVATE --coverage
+    )
+    target_link_options(nat20_crypto_nat20
+        PRIVATE --coverage
+    )
+endif()
 
 target_include_directories(nat20_crypto_nat20
     PUBLIC include
@@ -268,6 +301,15 @@ if(NAT20_WITH_TESTS OR NAT20_WITH_CRYPTO_BSSL)
         PRIVATE -Wextra
         PRIVATE -Werror
     )
+
+    if(NAT20_WITH_COVERAGE AND NAT20_WITH_TESTS)
+        target_compile_options(nat20_crypto_boringssl
+            PRIVATE --coverage
+        )
+        target_link_options(nat20_crypto_boringssl
+            PRIVATE --coverage
+        )
+    endif()
 
     target_include_directories(nat20_crypto_boringssl
         PUBLIC include
@@ -321,7 +363,13 @@ if (NAT20_WITH_TESTS)
     target_sources(nat20_test_bin
         PRIVATE ${LIBNAT20_TEST_SOURCES}
     )
+    if(NAT20_WITH_COVERAGE)
+        target_link_options(nat20_test_bin
+            PRIVATE --coverage
+        )
+    endif()
     target_link_libraries(nat20_test_bin gtest_main nat20 crypto pki nat20_crypto_boringssl nat20_test_utils)
+
     add_test(NAME nat20_test COMMAND nat20_test_bin)
 
     add_executable(nat20_service_test_bin)
@@ -331,10 +379,16 @@ if (NAT20_WITH_TESTS)
     target_link_libraries(nat20_service_test_bin gtest_main nat20 crypto pki nat20_crypto_boringssl nat20_test_utils nat20_service)
     add_test(NAME nat20_service_test COMMAND nat20_service_test_bin)
 
+
     add_executable(nat20_crypto_test_bin)
     target_sources(nat20_crypto_test_bin
         PRIVATE ${LIBNAT20_CRYPTO_TEST_SOURCES}
     )
+    if(NAT20_WITH_COVERAGE)
+        target_link_options(nat20_crypto_test_bin
+            PRIVATE --coverage
+        )
+    endif()
     target_link_libraries(nat20_crypto_test_bin gtest_main nat20 crypto pki nat20_test_utils)
     add_test(NAME nat20_crypto_test COMMAND nat20_crypto_test_bin)
 
@@ -349,6 +403,42 @@ if (NAT20_WITH_TESTS)
     )
     target_link_libraries(nat20_crypto_test_bin nat20_crypto_nat20)
 
+    if(NAT20_WITH_COVERAGE)
+        find_program(LCOV_EXECUTABLE lcov)
+        if(NOT LCOV_EXECUTABLE)
+            message(FATAL_ERROR "lcov executable not found. Please install lcov or disable code coverage reporting.")
+        endif()
+        find_program(GENHTML_EXECUTABLE genhtml)
+        if(NOT GENHTML_EXECUTABLE)
+            message(FATAL_ERROR "genhtml executable not found. Please install genhtml or disable code coverage reporting.")
+        endif()
+        add_custom_target(coverage
+            # Clear any previous coverage data
+            COMMAND lcov --zerocounters --rc lcov_branch_coverage=1 --base-directory ${CMAKE_SOURCE_DIR} --directory ${CMAKE_BINARY_DIR}
+
+            # Run the tests to generate new coverage data
+            COMMAND ctest
+
+            # Capture the coverage data into coverage.info
+            COMMAND lcov --capture --no-external --rc lcov_branch_coverage=1 --base-directory ${CMAKE_SOURCE_DIR} --directory ${CMAKE_BINARY_DIR} --output-file ${CMAKE_BINARY_DIR}/coverage.info
+
+            # Remove system header files from the report
+            COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '*/_deps/*' --output-file ${CMAKE_BINARY_DIR}/coverage.info --rc lcov_branch_coverage=1
+
+            # Generate the HTML report into the specified directory
+            COMMAND genhtml ${CMAKE_BINARY_DIR}/coverage.info --output-directory ${CMAKE_BINARY_DIR}/coverage_html --rc lcov_branch_coverage=1
+
+            # Provide a comment for the build output
+            COMMENT "Generating code coverage report..."
+
+            # Run the commands in the build directory
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+
+            # Make sure this target depends on the main test executable
+            DEPENDS nat20_test_bin
+            DEPENDS nat20_crypto_test_bin
+        )
+    endif()
 
 endif() # NAT20_WITH_TESTS
 
