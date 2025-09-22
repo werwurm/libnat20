@@ -71,7 +71,7 @@ enum n20_error_s {
      * This error is returned by message parsing function
      * when they encounter an unexpected header or end of message.
      */
-    n20_error_unexpected_message_structure_e = 11,
+    n20_error_unexpected_message_structure_e = 13,
 
     /**
      * @brief Parent path size exceeds maximum allowed.
@@ -82,7 +82,7 @@ enum n20_error_s {
      * path length, e.g., due to memory constraints, this error may be returned
      * if the limit is exceeded by a caller.
      */
-    n20_error_parent_path_size_exceeds_max_e = 12,
+    n20_error_parent_path_size_exceeds_max_e = 14,
 
     /**
      * @brief Request type unknown.
