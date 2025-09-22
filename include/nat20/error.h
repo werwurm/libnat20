@@ -101,6 +101,22 @@ enum n20_error_s {
     n20_error_request_type_not_implemented_e = 19,
 
     /**
+     * @brief Unexpected NULL pointer in request argument.
+     *
+     * This error is returned by functions that expect a valid request
+     * structure but receive a NULL pointer instead.
+     */
+    n20_error_unexpected_null_request_e = 20,
+
+    /**
+     * @brief Unexpected NULL pointer in response argument.
+     *
+     * This error is returned by functions that expect a valid response
+     * structure but receive a NULL pointer instead.
+     */
+    n20_error_unexpected_null_response_e = 21,
+
+    /**
      * @brief The crypto context given to an interface was invalid.
      *
      * Implementations must return this error if the context given is

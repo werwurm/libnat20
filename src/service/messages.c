@@ -589,6 +589,10 @@ n20_error_t n20_msg_eca_ee_sign_request_read(n20_istream_t *istream,
 }
 
 n20_error_t n20_msg_request_read(n20_msg_request_t *request, n20_slice_t const msg_buffer) {
+    if (request == NULL) {
+        return n20_error_unexpected_null_request_e;
+    }
+
     n20_istream_t istream;
     n20_istream_init(&istream, msg_buffer.buffer, msg_buffer.size);
 
@@ -898,6 +902,10 @@ n20_error_t n20_msg_issue_cert_response_read_cb(n20_istream_t *istream,
 
 n20_error_t n20_msg_issue_cert_response_read(n20_msg_issue_cert_response_t *response,
                                              n20_slice_t buffer) {
+    if (response == NULL) {
+        return n20_error_unexpected_null_response_e;
+    }
+
     n20_istream_t istream;
     n20_istream_init(&istream, buffer.buffer, buffer.size);
 
@@ -911,6 +919,10 @@ n20_error_t n20_msg_issue_cert_response_read(n20_msg_issue_cert_response_t *resp
 n20_error_t n20_msg_issue_cert_response_write(n20_msg_issue_cert_response_t const *response,
                                               uint8_t *buffer,
                                               size_t *const buffer_size_in_out) {
+    if (response == NULL) {
+        return n20_error_unexpected_null_response_e;
+    }
+
     n20_stream_t stream;
 
     if (buffer_size_in_out == NULL) {
@@ -966,6 +978,10 @@ n20_error_t n20_msg_error_response_read_cb(n20_istream_t *istream, int64_t key, 
 
 n20_error_t n20_msg_error_response_read(n20_msg_error_response_t *response,
                                         n20_slice_t const buffer) {
+    if (response == NULL) {
+        return n20_error_unexpected_null_response_e;
+    }
+
     n20_istream_t istream;
     n20_istream_init(&istream, buffer.buffer, buffer.size);
 
@@ -977,6 +993,10 @@ n20_error_t n20_msg_error_response_read(n20_msg_error_response_t *response,
 n20_error_t n20_msg_error_response_write(n20_msg_error_response_t const *response,
                                          uint8_t *buffer,
                                          size_t *const buffer_size_in_out) {
+    if (response == NULL) {
+        return n20_error_unexpected_null_response_e;
+    }
+
     n20_stream_t stream;
     int pairs = 0;
 
@@ -996,6 +1016,8 @@ n20_error_t n20_msg_error_response_write(n20_msg_error_response_t const *respons
     n20_cbor_write_map_header(&stream, pairs);
 
     if (n20_stream_has_write_position_overflow(&stream)) {
+        /* This is not reachable, because there are no variable sized elements
+         * in the input. */
         return n20_error_write_position_overflow_e;
     }
 
@@ -1042,6 +1064,10 @@ n20_error_t n20_msg_eca_ee_sign_response_read_cb(n20_istream_t *istream,
 
 n20_error_t n20_msg_eca_ee_sign_response_read(n20_msg_eca_ee_sign_response_t *response,
                                               n20_slice_t buffer) {
+    if (response == NULL) {
+        return n20_error_unexpected_null_response_e;
+    }
+
     n20_istream_t istream;
     n20_istream_init(&istream, buffer.buffer, buffer.size);
 
@@ -1055,6 +1081,10 @@ n20_error_t n20_msg_eca_ee_sign_response_read(n20_msg_eca_ee_sign_response_t *re
 n20_error_t n20_msg_eca_ee_sign_response_write(n20_msg_eca_ee_sign_response_t const *response,
                                                uint8_t *buffer,
                                                size_t *const buffer_size_in_out) {
+    if (response == NULL) {
+        return n20_error_unexpected_null_response_e;
+    }
+
     n20_stream_t stream;
 
     if (buffer_size_in_out == NULL) {

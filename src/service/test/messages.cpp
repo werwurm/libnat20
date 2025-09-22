@@ -19,14 +19,35 @@
 #include <nat20/error.h>
 #include <nat20/service/messages.h>
 #include <nat20/stream.h>
+#include <nat20/types.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
+#include "nat20/testing/test_utils.h"
+
+template <size_t N, typename T>
+constexpr auto make_array(T initializer) {
+    std::array<T, N> arr{};
+    for (size_t i = 0; i < N; ++i) {
+        arr[i] = initializer;
+    }
+    return arr;
+}
+
+constexpr auto TEST_PATH_ELEMENT1_DATA = make_array<32, uint8_t>(0x66);
+constexpr auto TEST_PATH_ELEMENT2_DATA = make_array<32, uint8_t>(0x77);
+
+n20_slice_t const TEST_PATH_ELEMENT1 = {TEST_PATH_ELEMENT1_DATA.size(),
+                                        TEST_PATH_ELEMENT1_DATA.data()};
+n20_slice_t const TEST_PATH_ELEMENT2 = {TEST_PATH_ELEMENT2_DATA.size(),
+                                        TEST_PATH_ELEMENT2_DATA.data()};
+
 class MessagesTest : public testing::Test {
    protected:
-    void SetUp() override {
-        // Initialize common test data
+    void SetUp() override {  // Initialize common test data
         test_buffer.resize(8192);
 
         // Set up common test values
@@ -112,11 +133,8 @@ TEST_F(MessagesTest, CdiCertRequestRoundTrip) {
                          .mode = n20_open_dice_mode_normal_e,
                          .profile_name = {8, "testprof"}},
         .parent_path_length = 2,
+        .parent_path = {TEST_PATH_ELEMENT1, TEST_PATH_ELEMENT2},
         .certificate_format = n20_certificate_format_x509_e};
-
-    // Set up parent path
-    original_request.parent_path[0] = {4, (uint8_t*)"ctx1"};
-    original_request.parent_path[1] = {4, (uint8_t*)"ctx2"};
 
     n20_msg_request_t request = {.request_type = n20_msg_request_type_issue_cdi_cert_e,
                                  .payload = {.issue_cdi_cert = original_request}};
@@ -142,6 +160,18 @@ TEST_F(MessagesTest, CdiCertRequestRoundTrip) {
               read_request.payload.issue_cdi_cert.certificate_format);
     EXPECT_EQ(2, read_request.payload.issue_cdi_cert.parent_path_length);
     EXPECT_EQ(n20_open_dice_mode_normal_e, read_request.payload.issue_cdi_cert.next_context.mode);
+    EXPECT_EQ(original_request.parent_path[0].size,
+              read_request.payload.issue_cdi_cert.parent_path[0].size);
+    EXPECT_EQ(0,
+              memcmp(original_request.parent_path[0].buffer,
+                     read_request.payload.issue_cdi_cert.parent_path[0].buffer,
+                     original_request.parent_path[0].size));
+    EXPECT_EQ(original_request.parent_path[1].size,
+              read_request.payload.issue_cdi_cert.parent_path[1].size);
+    EXPECT_EQ(0,
+              memcmp(original_request.parent_path[1].buffer,
+                     read_request.payload.issue_cdi_cert.parent_path[1].buffer,
+                     original_request.parent_path[1].size));
 }
 
 // Test ECA cert request read/write
@@ -149,11 +179,10 @@ TEST_F(MessagesTest, EcaCertRequestRoundTrip) {
     n20_msg_issue_eca_cert_request_t original_request = {
         .issuer_key_type = n20_crypto_key_type_secp256r1_e,
         .subject_key_type = n20_crypto_key_type_ed25519_e,
-        .parent_path_length = 1,
+        .parent_path_length = 2,
+        .parent_path = {TEST_PATH_ELEMENT1, TEST_PATH_ELEMENT2},
         .certificate_format = n20_certificate_format_x509_e,
         .challenge = {8, (uint8_t*)"challeng"}};
-
-    original_request.parent_path[0] = test_compressed_context;
 
     n20_msg_request_t request = {.request_type = n20_msg_request_type_issue_eca_cert_e,
                                  .payload = {.issue_eca_cert = original_request}};
@@ -176,8 +205,20 @@ TEST_F(MessagesTest, EcaCertRequestRoundTrip) {
     EXPECT_EQ(n20_crypto_key_type_ed25519_e, read_request.payload.issue_eca_cert.subject_key_type);
     EXPECT_EQ(n20_certificate_format_x509_e,
               read_request.payload.issue_eca_cert.certificate_format);
-    EXPECT_EQ(1, read_request.payload.issue_eca_cert.parent_path_length);
+    EXPECT_EQ(2, read_request.payload.issue_eca_cert.parent_path_length);
     EXPECT_EQ(8, read_request.payload.issue_eca_cert.challenge.size);
+    EXPECT_EQ(original_request.parent_path[0].size,
+              read_request.payload.issue_eca_cert.parent_path[0].size);
+    EXPECT_EQ(0,
+              memcmp(original_request.parent_path[0].buffer,
+                     read_request.payload.issue_eca_cert.parent_path[0].buffer,
+                     original_request.parent_path[0].size));
+    EXPECT_EQ(original_request.parent_path[1].size,
+              read_request.payload.issue_eca_cert.parent_path[1].size);
+    EXPECT_EQ(0,
+              memcmp(original_request.parent_path[1].buffer,
+                     read_request.payload.issue_eca_cert.parent_path[1].buffer,
+                     original_request.parent_path[1].size));
 }
 
 // Test ECA End-Entity cert request read/write
@@ -187,7 +228,8 @@ TEST_F(MessagesTest, EcaEeCertRequestRoundTrip) {
     n20_msg_issue_eca_ee_cert_request_t original_request = {
         .issuer_key_type = n20_crypto_key_type_ed25519_e,
         .subject_key_type = n20_crypto_key_type_secp384r1_e,
-        .parent_path_length = 0,
+        .parent_path_length = 2,
+        .parent_path = {TEST_PATH_ELEMENT1, TEST_PATH_ELEMENT2},
         .certificate_format = n20_certificate_format_x509_e,
         .name = {7, "testkey"},
         .key_usage = {2, key_usage_data},
@@ -219,6 +261,19 @@ TEST_F(MessagesTest, EcaEeCertRequestRoundTrip) {
     EXPECT_EQ(2, read_request.payload.issue_eca_ee_cert.key_usage.size);
     EXPECT_EQ(0x01, read_request.payload.issue_eca_ee_cert.key_usage.buffer[0]);
     EXPECT_EQ(0x02, read_request.payload.issue_eca_ee_cert.key_usage.buffer[1]);
+    EXPECT_EQ(2, read_request.payload.issue_eca_ee_cert.parent_path_length);
+    EXPECT_EQ(original_request.parent_path[0].size,
+              read_request.payload.issue_eca_ee_cert.parent_path[0].size);
+    EXPECT_EQ(0,
+              memcmp(original_request.parent_path[0].buffer,
+                     read_request.payload.issue_eca_ee_cert.parent_path[0].buffer,
+                     original_request.parent_path[0].size));
+    EXPECT_EQ(original_request.parent_path[1].size,
+              read_request.payload.issue_eca_ee_cert.parent_path[1].size);
+    EXPECT_EQ(0,
+              memcmp(original_request.parent_path[1].buffer,
+                     read_request.payload.issue_eca_ee_cert.parent_path[1].buffer,
+                     original_request.parent_path[1].size));
     EXPECT_EQ(0, memcmp("abcd", read_request.payload.issue_eca_ee_cert.challenge.buffer, 4));
 }
 
@@ -229,7 +284,8 @@ TEST_F(MessagesTest, EcaEeSignRequestRoundTrip) {
 
     n20_msg_eca_ee_sign_request_t original_request = {
         .subject_key_type = n20_crypto_key_type_ed25519_e,
-        .parent_path_length = 0,
+        .parent_path_length = 2,
+        .parent_path = {TEST_PATH_ELEMENT1, TEST_PATH_ELEMENT2},
         .name = {6, "signer"},
         .key_usage = {1, key_usage_data},
         .message = {13, message_data}};
@@ -256,6 +312,21 @@ TEST_F(MessagesTest, EcaEeSignRequestRoundTrip) {
     EXPECT_EQ(0, memcmp("signer", read_request.payload.eca_ee_sign.name.buffer, 6));
     EXPECT_EQ(13, read_request.payload.eca_ee_sign.message.size);
     EXPECT_EQ(0, memcmp("Hello, World!", read_request.payload.eca_ee_sign.message.buffer, 13));
+    EXPECT_EQ(1, read_request.payload.eca_ee_sign.key_usage.size);
+    EXPECT_EQ(0x01, read_request.payload.eca_ee_sign.key_usage.buffer[0]);
+    EXPECT_EQ(2, read_request.payload.eca_ee_sign.parent_path_length);
+    EXPECT_EQ(original_request.parent_path[0].size,
+              read_request.payload.eca_ee_sign.parent_path[0].size);
+    EXPECT_EQ(0,
+              memcmp(original_request.parent_path[0].buffer,
+                     read_request.payload.eca_ee_sign.parent_path[0].buffer,
+                     original_request.parent_path[0].size));
+    EXPECT_EQ(original_request.parent_path[1].size,
+              read_request.payload.eca_ee_sign.parent_path[1].size);
+    EXPECT_EQ(0,
+              memcmp(original_request.parent_path[1].buffer,
+                     read_request.payload.eca_ee_sign.parent_path[1].buffer,
+                     original_request.parent_path[1].size));
 }
 
 // Test error response read/write
@@ -447,18 +518,33 @@ TEST_F(MessagesTest, BufferOverflow) {
               n20_msg_request_write(&msg, small_buffer, &buffer_size));
 }
 
+TEST_F(MessagesTest, RequestWriteRequestTypeUnknown) {
+    n20_msg_request_t msg = {.request_type = static_cast<n20_msg_request_type_t>(255)};
+
+    size_t buffer_size = test_buffer.size();
+    EXPECT_EQ(n20_error_request_type_unknown_e,
+              n20_msg_request_write(&msg, test_buffer.data(), &buffer_size));
+}
+
+TEST_F(MessagesTest, RequestWriteWritePositionOverflow) {
+    // Create a request that would cause size_t overflow when calculating write position.
+    n20_msg_request_t msg = {
+        .request_type = n20_msg_request_type_promote_e,
+        .payload = {.promote = {.compressed_context = {SIZE_MAX, (uint8_t const*)1}}}};
+
+    size_t buffer_size = 0;  // Zero size to trigger overflow
+    EXPECT_EQ(n20_error_write_position_overflow_e,
+              n20_msg_request_write(&msg, test_buffer.data(), &buffer_size));
+}
+
 // Test null pointer handling
-TEST_F(MessagesTest, NullPointerHandling) {
+TEST_F(MessagesTest, RequestReadNullPointerHandling) {
     n20_msg_request_t request = {};
     n20_msg_error_response_t error_response = {};
     size_t buffer_size = test_buffer.size();
 
     // Test null request pointer
-    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(nullptr, test_slice));
-
-    // Test null buffer size pointer
-    EXPECT_EQ(n20_error_unexpected_null_buffer_size_e,
-              n20_msg_error_response_write(&error_response, test_buffer.data(), nullptr));
+    EXPECT_EQ(n20_error_unexpected_null_request_e, n20_msg_request_read(nullptr, test_slice));
 }
 
 // Test maximum path length
@@ -659,7 +745,38 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_P(ReadMalformedRequestTestFixture, MalformedRequestHandling) {
     auto [request_type, field] = GetParam();
 
-    std::vector<uint8_t> cbor_data = {
+    std::vector<uint8_t> cbor_data = {};
+    n20_msg_request_t request = {};
+
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data = {
+        0xA2,  // Map of 3 items
+    };
+
+    // Not an array
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data = {
+        0x82,  // Array of 2 items
+    };
+
+    // Missing request type
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data = {
+        0x82,  // Array of 2 items
+        0xF7,  // Invalid request type (undefined)
+    };
+
+    // Request type not an integer
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+
+    cbor_data = {
         0x82,                                // Array of 2 items
         static_cast<uint8_t>(request_type),  // Request type
         0xA1,                                // Map with one element
@@ -667,7 +784,6 @@ TEST_P(ReadMalformedRequestTestFixture, MalformedRequestHandling) {
 
     // Missing field key
     WriteTestCborMessage(cbor_data);
-    n20_msg_request_t request = {};
     EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
 
     // Unexpected field key failing to skip due to lack of value.
@@ -940,4 +1056,234 @@ TEST_P(CompressedContextPathTestFixture, CompressedContextMalformed) {
     cbor_data.push_back(0x42);  // Truncated byte string of size 2
     WriteTestCborMessage(cbor_data);
     EXPECT_EQ(n20_error_unexpected_message_structure_e, n20_msg_request_read(&request, test_slice));
+}
+
+TEST_F(MessagesTest, IssueCertResponseReadNullPointerHandling) {
+    n20_msg_issue_cert_response_t response = {};
+    size_t buffer_size = test_buffer.size();
+
+    // Test null response pointer
+    EXPECT_EQ(n20_error_unexpected_null_response_e,
+              n20_msg_issue_cert_response_read(nullptr, test_slice));
+}
+
+TEST_F(MessagesTest, MalformedIssueCertResponseHandling) {
+    std::vector<uint8_t> cbor_data = {0xA1, 0x14};
+    n20_msg_issue_cert_response_t response = {};
+
+    // Error code missing value.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_issue_cert_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x14, 0x20};
+    // Error code is not an unsigned integer.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_issue_cert_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x15};
+    // Certificate missing value.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_issue_cert_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x15, 0x20};
+    // Certificate Not a byte string.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_issue_cert_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x15, 0x42, 'a'};
+    // Certificate is truncated 0x42 has length 2 but only one byte follows.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_issue_cert_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x17, 0xF7};
+    // Unknown field key. Skipped successfully.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_ok_e, n20_msg_issue_cert_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x17, 0xFF};
+    // Unknown field key. Not a valid CBOR item.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_issue_cert_response_read(&response, test_slice));
+}
+
+TEST_F(MessagesTest, WriteIssueCertResponseNullPointerHandling) {
+    n20_msg_issue_cert_response_t response = {};
+    size_t buffer_size = test_buffer.size();
+
+    // Test null response pointer
+    EXPECT_EQ(n20_error_unexpected_null_response_e,
+              n20_msg_issue_cert_response_write(nullptr, test_buffer.data(), &buffer_size));
+
+    // Test null buffer size pointer
+    EXPECT_EQ(n20_error_unexpected_null_buffer_size_e,
+              n20_msg_issue_cert_response_write(&response, test_buffer.data(), nullptr));
+}
+
+TEST_F(MessagesTest, WriteIssueCertResponseWritePositionOverflow) {
+    n20_msg_issue_cert_response_t response = {.certificate = {SIZE_MAX, (uint8_t const*)1}};
+    size_t buffer_size = test_buffer.size();
+
+    EXPECT_EQ(n20_error_write_position_overflow_e,
+              n20_msg_issue_cert_response_write(&response, test_buffer.data(), &buffer_size));
+}
+
+TEST_F(MessagesTest, WriteIssueCertResponseBufferOverflow) {
+    n20_msg_issue_cert_response_t response = {.certificate = test_cert_data};
+    uint8_t small_buffer[4];
+    size_t buffer_size = sizeof(small_buffer);
+
+    EXPECT_EQ(n20_error_insufficient_buffer_size_e,
+              n20_msg_issue_cert_response_write(&response, small_buffer, &buffer_size));
+    EXPECT_EQ(buffer_size, 104);
+}
+
+TEST_F(MessagesTest, ErrorResponseReadNullPointerHandling) {
+    n20_msg_issue_cert_response_t response = {};
+    size_t buffer_size = test_buffer.size();
+
+    // Test null response pointer
+    EXPECT_EQ(n20_error_unexpected_null_response_e,
+              n20_msg_error_response_read(nullptr, test_slice));
+}
+
+TEST_F(MessagesTest, MalformedErrorResponseReadHandling) {
+    std::vector<uint8_t> cbor_data = {0xA1, 0x14};
+    n20_msg_error_response_t response = {};
+
+    // Error code missing value.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_error_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x14, 0x20};
+    // Error code is not an unsigned integer.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_error_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x17, 0xF7};
+    // Unknown field key. Skipped successfully.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_ok_e, n20_msg_error_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x17, 0xFF};
+    // Unknown field key. Not a valid CBOR item.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_error_response_read(&response, test_slice));
+}
+
+TEST_F(MessagesTest, ErrorResponseWriteNullPointerHandling) {
+    n20_msg_error_response_t response = {};
+    size_t buffer_size = test_buffer.size();
+
+    // Test null response pointer
+    EXPECT_EQ(n20_error_unexpected_null_response_e,
+              n20_msg_error_response_write(nullptr, test_buffer.data(), &buffer_size));
+
+    // Test null buffer size pointer
+    EXPECT_EQ(n20_error_unexpected_null_buffer_size_e,
+              n20_msg_error_response_write(&response, test_buffer.data(), nullptr));
+}
+
+TEST_F(MessagesTest, ErrorResponseWriteBufferOverflow) {
+    n20_msg_error_response_t response = {.error_code = n20_error_crypto_invalid_key_e};
+    uint8_t small_buffer[1];
+    size_t buffer_size = sizeof(small_buffer);
+
+    EXPECT_EQ(n20_error_insufficient_buffer_size_e,
+              n20_msg_error_response_write(&response, small_buffer, &buffer_size));
+    EXPECT_EQ(buffer_size, 5);
+}
+
+TEST_F(MessagesTest, EcaEeSignResponseReadNullPointerHandling) {
+    n20_msg_issue_cert_response_t response = {};
+    size_t buffer_size = test_buffer.size();
+
+    // Test null response pointer
+    EXPECT_EQ(n20_error_unexpected_null_response_e,
+              n20_msg_eca_ee_sign_response_read(nullptr, test_slice));
+}
+
+TEST_F(MessagesTest, MalformedEcaEeSignResponseHandling) {
+    std::vector<uint8_t> cbor_data = {0xA1, 0x14};
+    n20_msg_eca_ee_sign_response_t response = {};
+
+    // Error code missing value.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_eca_ee_sign_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x14, 0x20};
+    // Error code is not an unsigned integer.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_eca_ee_sign_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x16};
+    // Signature missing value.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_eca_ee_sign_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x16, 0x20};
+    // Signature not a byte string.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_eca_ee_sign_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x16, 0x42, 'a'};
+    // Signature is truncated 0x42 has length 2 but only one byte follows.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_eca_ee_sign_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x17, 0xF7};
+    // Unknown field key. Skipped successfully.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_ok_e, n20_msg_eca_ee_sign_response_read(&response, test_slice));
+
+    cbor_data = {0xA1, 0x17, 0xFF};
+    // Unknown field key. Not a valid CBOR item.
+    WriteTestCborMessage(cbor_data);
+    EXPECT_EQ(n20_error_unexpected_message_structure_e,
+              n20_msg_eca_ee_sign_response_read(&response, test_slice));
+}
+
+TEST_F(MessagesTest, EcaEeSignResponseWriteNullPointerHandling) {
+    n20_msg_eca_ee_sign_response_t response = {};
+    size_t buffer_size = test_buffer.size();
+
+    // Test null response pointer
+    EXPECT_EQ(n20_error_unexpected_null_response_e,
+              n20_msg_eca_ee_sign_response_write(nullptr, test_buffer.data(), &buffer_size));
+
+    // Test null buffer size pointer
+    EXPECT_EQ(n20_error_unexpected_null_buffer_size_e,
+              n20_msg_eca_ee_sign_response_write(&response, test_buffer.data(), nullptr));
+}
+
+TEST_F(MessagesTest, EcaEeSignResponseWritePositionOverflow) {
+    n20_msg_eca_ee_sign_response_t response = {.signature = {SIZE_MAX, (uint8_t const*)1}};
+    uint8_t small_buffer[4];
+    size_t buffer_size = sizeof(small_buffer);
+
+    EXPECT_EQ(n20_error_write_position_overflow_e,
+              n20_msg_eca_ee_sign_response_write(&response, small_buffer, &buffer_size));
+}
+
+TEST_F(MessagesTest, EcaEeSignResponseWriteBufferOverflow) {
+    n20_msg_eca_ee_sign_response_t response = {.signature = test_signature_data};
+    uint8_t small_buffer[4];
+    size_t buffer_size = sizeof(small_buffer);
+
+    EXPECT_EQ(n20_error_insufficient_buffer_size_e,
+              n20_msg_eca_ee_sign_response_write(&response, small_buffer, &buffer_size));
+    EXPECT_EQ(buffer_size, 68);
 }
