@@ -378,6 +378,9 @@ extern n20_error_t n20_issue_x509_cert(n20_open_dice_cert_info_t const *cert_inf
  * The signature format depends on the signing key algorithm.
  * See @ref n20_crypto_context_s.sign for details.
  *
+ * In keeping with the other functions, the signature is written
+ * to the end of the provided buffer.
+ *
  * @param crypto_ctx The crypto context.
  * @param parent_secret The parent CDI secret.
  * @param key_type The type of the ECA key to generate.

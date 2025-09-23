@@ -920,18 +920,19 @@ TEST_P(EeSignMessageTestFixture, EeSignMessageTest) {
     struct test_context {
         n20_slice_t message;
         uint8_t* signature;
-        size_t signature_size;
-        size_t* signature_size_ptr = &signature_size;
+        size_t signature_buffer_size;
+        size_t want_signature_size;
         n20_error_t (*sign)(struct n20_crypto_context_s* ctx,
                             n20_crypto_key_t key_in,
                             n20_crypto_gather_list_t const* msg_in,
                             uint8_t* signature_out,
                             size_t* signature_size_in_out);
+        unsigned int call_count = 0;
     } test_ctx = {
         .message = message,
-        .signature = signature,
-        .signature_size = signature_size,
-        .signature_size_ptr = &signature_size,
+        .signature = &signature[sizeof(signature) - want_signature.size()],
+        .signature_buffer_size = sizeof(signature),
+        .want_signature_size = want_signature.size(),
         .sign = crypto_ctx->sign,
     };
 
@@ -946,10 +947,20 @@ TEST_P(EeSignMessageTestFixture, EeSignMessageTest) {
         EXPECT_EQ(gather_list->count, 1);
         EXPECT_EQ(gather_list->list[0].size, test_ctx->message.size);
         EXPECT_EQ(gather_list->list[0].buffer, test_ctx->message.buffer);
-        EXPECT_EQ(size, test_ctx->signature_size_ptr);
-        EXPECT_EQ(*size, test_ctx->signature_size);
-        EXPECT_EQ(signature, test_ctx->signature);
-        return test_ctx->sign(ctx, key, gather_list, signature, size);
+        // sign is called twice, first to get the signature size and second to get the signature.
+        if (test_ctx->call_count == 0) {
+            test_ctx->call_count++;
+            EXPECT_NE(size, nullptr);
+            EXPECT_EQ(*size, 0u);
+            EXPECT_EQ(signature, nullptr);
+        } else {
+            EXPECT_NE(size, nullptr);
+            EXPECT_EQ(*size, test_ctx->want_signature_size);
+            EXPECT_EQ(signature, test_ctx->signature);
+        }
+        auto err = test_ctx->sign(ctx, key, gather_list, signature, size);
+        EXPECT_EQ(*size, test_ctx->want_signature_size);
+        return err;
     };
 
     n20_string_slice_t name = N20_STR_C("Test EE");
@@ -969,7 +980,8 @@ TEST_P(EeSignMessageTestFixture, EeSignMessageTest) {
         return;
     }
 
-    auto signature_vect = std::vector<uint8_t>(signature, signature + signature_size);
+    auto signature_vect = std::vector<uint8_t>(signature + sizeof(signature) - signature_size,
+                                               signature + sizeof(signature));
     EXPECT_EQ(want_signature, signature_vect) << "Signature mismatch" << std::endl
                                               << hex_as_c_array(signature_vect);
 }
@@ -987,6 +999,59 @@ TEST(EeSignMessageTest, EeSignMessageMissingCryptoContextTest) {
 }
 
 class EcaEeSignMessageFixture : public BsslTestFixtureBase {};
+
+TEST_F(EcaEeSignMessageFixture, EeSignMessageUnexpectedNullBufferSizeTest) {
+    n20_crypto_key_t parent_secret = nullptr;
+    ASSERT_EQ(n20_error_unexpected_null_buffer_size_e,
+              n20_eca_ee_sign_message(crypto_ctx,
+                                      parent_secret,
+                                      n20_crypto_key_type_ed25519_e,
+                                      N20_STR_C("Test EE"),
+                                      N20_SLICE_NULL,
+                                      N20_SLICE_NULL,
+                                      nullptr,
+                                      nullptr));
+}
+
+TEST_F(EcaEeSignMessageFixture, EeSignMessageUnexpectedInsufficientBufferSizeTest) {
+    n20_crypto_key_t parent_secret = GetCdi();
+    KEY_HANDLE_GUARD(parent_secret);
+    size_t signature_size = 0;
+    ASSERT_EQ(n20_error_insufficient_buffer_size_e,
+              n20_eca_ee_sign_message(crypto_ctx,
+                                      parent_secret,
+                                      n20_crypto_key_type_ed25519_e,
+                                      N20_STR_C("Test EE"),
+                                      N20_SLICE_NULL,
+                                      N20_SLICE_NULL,
+                                      nullptr,
+                                      &signature_size));
+    EXPECT_EQ(signature_size, 64u);  // Ed25519 signature size
+
+    signature_size = 0;
+    ASSERT_EQ(n20_error_insufficient_buffer_size_e,
+              n20_eca_ee_sign_message(crypto_ctx,
+                                      parent_secret,
+                                      n20_crypto_key_type_secp256r1_e,
+                                      N20_STR_C("Test EE"),
+                                      N20_SLICE_NULL,
+                                      N20_SLICE_NULL,
+                                      nullptr,
+                                      &signature_size));
+    EXPECT_EQ(signature_size, 64u);  // Secp256r1 signature size
+
+    signature_size = 0;
+    ASSERT_EQ(n20_error_insufficient_buffer_size_e,
+              n20_eca_ee_sign_message(crypto_ctx,
+                                      parent_secret,
+                                      n20_crypto_key_type_secp384r1_e,
+                                      N20_STR_C("Test EE"),
+                                      N20_SLICE_NULL,
+                                      N20_SLICE_NULL,
+                                      nullptr,
+                                      &signature_size));
+    EXPECT_EQ(signature_size, 96u);  // Secp384r1 signature size
+}
 
 TEST_F(EcaEeSignMessageFixture, EeSignMessageDigestErrorForwardingTest) {
     crypto_ctx->digest_ctx.digest = [](n20_crypto_digest_context_t* ctx,
@@ -1019,6 +1084,58 @@ TEST_F(EcaEeSignMessageFixture, EeSignMessageDigestErrorForwardingTest) {
                                       key_usage_slice,
                                       message,
                                       signature,
+                                      &signature_size));
+}
+
+TEST_F(EcaEeSignMessageFixture, EeSignMessageSignErrorForwardingTest) {
+
+    struct test_context {
+        n20_error_t (*sign)(struct n20_crypto_context_s* ctx,
+                            n20_crypto_key_t key_in,
+                            n20_crypto_gather_list_t const* msg_in,
+                            uint8_t* signature_out,
+                            size_t* signature_size_in_out);
+        unsigned int fail_on = 0;
+    } test_ctx = {
+        .sign = crypto_ctx->sign,
+    };
+
+    SetTestContext(&test_ctx);
+    crypto_ctx->sign = [](n20_crypto_context_t* ctx,
+                          n20_crypto_key_t key,
+                          n20_crypto_gather_list_t const* gather_list,
+                          uint8_t* signature,
+                          size_t* size) -> n20_error_t {
+        auto test_ctx = BsslTestFixtureCryptoContext::GetTestContext<test_context>(ctx);
+        if (test_ctx->fail_on-- == 0) {
+            return n20_error_crypto_implementation_specific_e;
+        }
+        return test_ctx->sign(ctx, key, gather_list, signature, size);
+    };
+
+    n20_crypto_key_t parent_secret = GetCdi();
+    KEY_HANDLE_GUARD(parent_secret);
+    size_t signature_size = 0;
+    ASSERT_EQ(n20_error_crypto_implementation_specific_e,
+              n20_eca_ee_sign_message(crypto_ctx,
+                                      parent_secret,
+                                      n20_crypto_key_type_ed25519_e,
+                                      N20_STR_C("Test EE"),
+                                      N20_SLICE_NULL,
+                                      N20_SLICE_NULL,
+                                      nullptr,
+                                      &signature_size));
+
+    test_ctx.fail_on = 1;
+    signature_size = 64;
+    ASSERT_EQ(n20_error_crypto_implementation_specific_e,
+              n20_eca_ee_sign_message(crypto_ctx,
+                                      parent_secret,
+                                      n20_crypto_key_type_ed25519_e,
+                                      N20_STR_C("Test EE"),
+                                      N20_SLICE_NULL,
+                                      N20_SLICE_NULL,
+                                      nullptr,
                                       &signature_size));
 }
 

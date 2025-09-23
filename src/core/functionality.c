@@ -515,6 +515,9 @@ n20_error_t n20_issue_x509_cert(n20_open_dice_cert_info_t const *cert_info,
     *certificate_size = n20_stream_byte_count(&stream);
     if (n20_stream_has_buffer_overflow(&stream)) {
         if (n20_stream_has_write_position_overflow(&stream)) {
+            /* This is not reachable because any malformed input
+             * would have been caught when generating the tbs part
+             * of the certificate. */
             return n20_error_write_position_overflow_e;
         }
         return n20_error_insufficient_buffer_size_e;
@@ -552,10 +555,14 @@ n20_error_t n20_eca_ee_sign_message(n20_crypto_context_t *crypto_ctx,
                                     n20_slice_t key_usage,
                                     n20_slice_t message,
                                     uint8_t *signature,
-                                    size_t *signature_size) {
+                                    size_t *signature_size_in_out) {
     /* Check if the crypto context is valid. */
     if (crypto_ctx == NULL) {
         return n20_error_missing_crypto_context_e;
+    }
+
+    if (signature_size_in_out == NULL) {
+        return n20_error_unexpected_null_buffer_size_e;
     }
 
     n20_open_dice_cert_info_t cert_info = {0};
@@ -596,7 +603,30 @@ n20_error_t n20_eca_ee_sign_message(n20_crypto_context_t *crypto_ctx,
         .list = &message,
     };
 
-    err = crypto_ctx->sign(crypto_ctx, eca_ee_key, &message_gather, signature, signature_size);
+    size_t signature_size_local = 0;
+    err = crypto_ctx->sign(crypto_ctx, eca_ee_key, &message_gather, NULL, &signature_size_local);
+
+    if (err != n20_error_crypto_insufficient_buffer_size_e) {
+        /* We expect insufficient buffer size error here. */
+        crypto_ctx->key_free(crypto_ctx, eca_ee_key);
+        return err;
+    }
+
+    if (*signature_size_in_out < signature_size_local) {
+        *signature_size_in_out = signature_size_local;
+        /* Clean up the ECA key */
+        crypto_ctx->key_free(crypto_ctx, eca_ee_key);
+        return n20_error_insufficient_buffer_size_e;
+    }
+
+    err = crypto_ctx->sign(crypto_ctx,
+                           eca_ee_key,
+                           &message_gather,
+                           signature + *signature_size_in_out - signature_size_local,
+                           &signature_size_local);
+    if (err == n20_error_ok_e) {
+        *signature_size_in_out = signature_size_local;
+    }
 
     /* Clean up the ECA key */
     crypto_ctx->key_free(crypto_ctx, eca_ee_key);
@@ -735,6 +765,8 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
             err = n20_derive_eca_key(crypto_ctx, issuer_cdi, &issuer_key, issuer_key_type);
             break;
         default:
+            /* This is not reachable because any unknown certificate type
+             * would have tripped up subject key generation above. */
             err = n20_error_unsupported_certificate_type_e;
             break;
     }
