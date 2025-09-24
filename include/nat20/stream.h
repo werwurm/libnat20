@@ -347,7 +347,7 @@ extern bool n20_istream_get(n20_istream_t *s, uint8_t *c);
 /** @brief Gets a buffer slice from the input stream.
  *
  * This function advances the read position of the input stream by the
- * specified size and returns a true if the stream is in a good state
+ * specified size and returns true if the stream is in a good state
  * and has @p size or more bytes available.
  *
  * If @p size exceeds the data available in the stream, the function
@@ -368,7 +368,7 @@ extern bool n20_istream_get(n20_istream_t *s, uint8_t *c);
  */
 extern bool n20_istream_get_slice(n20_istream_t *s, n20_slice_t *slice_out, size_t size);
 
-/** @brief Gets a buffer slice from the input stream.
+/** @brief Gets a string slice from the input stream.
  *
  * This function works like @ref n20_istream_get_slice but for string slices.
  *
