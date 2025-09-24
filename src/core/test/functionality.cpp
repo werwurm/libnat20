@@ -97,14 +97,14 @@ n20_open_dice_input_t const TEST_OPEN_DICE_INPUT = {
 };
 
 // Implement container_of macro
-#define container_of(ptr, type, member) ((type*)((char*)(ptr)-offsetof(type, member)))
+#define container_of(ptr, type, member) ((type*)(((char*)(ptr)) - offsetof(type, member)))
 
 struct BsslTestFixtureCryptoContext : public n20_crypto_context_t {
-
     template <typename T>
     static T* GetTestContext(n20_crypto_context_t* ctx) {
         return reinterpret_cast<T*>(reinterpret_cast<BsslTestFixtureCryptoContext*>(ctx)->test_ctx);
     }
+
     template <typename T>
     static T* GetTestContext(n20_crypto_digest_context_t* ctx) {
         n20_crypto_context_t* base_ctx = container_of(ctx, n20_crypto_context_t, digest_ctx);
@@ -120,6 +120,7 @@ struct BsslTestFixtureCryptoContext : public n20_crypto_context_t {
         memcpy(this, &ctx, sizeof(n20_crypto_context_t));
         PatchFunctions();
     }
+
     BsslTestFixtureCryptoContext& operator=(n20_crypto_context_t const& ctx) {
         memcpy(this, &ctx, sizeof(n20_crypto_context_t));
         PatchFunctions();

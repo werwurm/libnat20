@@ -407,13 +407,13 @@ extern n20_error_t n20_eca_ee_sign_message(n20_crypto_context_t *crypto_ctx,
  *
  * - The issuer's key pair is derived from the issuer's CDI.
  * - In the case that the subject key belongs to the next level
- *   CDI it derives the next CDI from the open dice input.
+ *   CDI, it derives the next CDI from the open dice input
  *   in the @p cert_info.
  * - If @p issuer_serial_number_out is not NULL, the issuer's
  *   public key is loaded and the CDI_ID is computed and stored
  *   into @p issuer_serial_number_out. Note that to minimize
  *   stack usage the provided subject public key buffer is used
- *   is used as a scratch pad for the issuer public key. This
+ *   as a scratch pad for the issuer public key. This
  *   means that the buffer must be large enough for the issuer
  *   public key type even if a smaller subject key type is used.
  *   As of this writing 96 bytes is sufficient for the largest

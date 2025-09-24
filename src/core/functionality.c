@@ -370,7 +370,9 @@ void n20_func_key_usage_open_dice_to_x509(n20_open_dice_cert_info_t const *cert_
         return;
     }
 
-    // Map OpenDICE key usage to X.509 key usage
+    /* Map OpenDICE key usage to X.509 key usage.
+     * Both use the same flags with the same bit positions. But
+     * the bit endianness is reversed. */
     for (int i = 0; i < 8; ++i) {
         key_usage->key_usage_mask[0] |= ((cert_info->key_usage[0] >> i) & 1) << (7 - i);
         key_usage->key_usage_mask[1] |= ((cert_info->key_usage[1] >> i) & 1) << (7 - i);
@@ -673,7 +675,7 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
         }
     }
 
-    /* 1. Derive subject CDI. Life handles 1 -> 2
+    /* 1. Derive subject CDI. Alive handles 1 -> 2
      * If the certificate type is CDI, we need to derive the next level
      * CDI secret first. Otherwise, the issuer CDI is the same as the subject CDI.*/
     if (cert_info->cert_type == n20_cert_type_cdi_e) {
@@ -790,7 +792,7 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
      * to be retrieved and the cdi_id computed. Otherwise this
      * can be skipped. */
     if (issuer_serial_number_out != NULL) {
-        /* 5. Get issuer public key. Life handles 3 */
+        /* 5. Get issuer public key. Alive handles 3 */
         err = crypto_ctx->key_get_public_key(crypto_ctx,
                                              issuer_key,
                                              subject_public_key_buffer_out,
@@ -803,7 +805,7 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
             return err;
         }
 
-        /* 6. Compute issuer CDI ID. Life handles 3 */
+        /* 6. Compute issuer CDI ID. Alive handles 3 */
         err = n20_open_dice_cdi_id(
             &crypto_ctx->digest_ctx,
             (n20_slice_t){*subject_public_key_buffer_size_in_out, subject_public_key_buffer_out},
@@ -817,14 +819,14 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
         }
     }
 
-    /* 7. Get subject public key. Life handles 3 */
+    /* 7. Get subject public key. Alive handles 3 */
     *subject_public_key_buffer_size_in_out = subject_public_key_size;
     err = crypto_ctx->key_get_public_key(crypto_ctx,
                                          subject_key,
                                          subject_public_key_buffer_out,
                                          subject_public_key_buffer_size_in_out);
 
-    /* 8. Free subject key handle. Life handles 3 -> 2
+    /* 8. Free subject key handle. Alive handles 3 -> 2
      * The subject key handle needs to be freed regardless of whether the previous
      * call was successful or not. */
     /* Precondition: handle_count = 3 */
@@ -841,7 +843,7 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
     /* If the subject serial number is requested, the cdi_id needs to be computed.
      * Otherwise this can be skipped. */
     if (subject_serial_number_out != NULL) {
-        /* 9. Compute subject CDI ID. Life handles 2 */
+        /* 9. Compute subject CDI ID. Alive handles 2 */
         err = n20_open_dice_cdi_id(
             &crypto_ctx->digest_ctx,
             (n20_slice_t){*subject_public_key_buffer_size_in_out, subject_public_key_buffer_out},
@@ -859,7 +861,7 @@ n20_error_t n20_compute_certificate_context(n20_crypto_context_t *crypto_ctx,
     if (issuer_key_out != NULL) {
         *issuer_key_out = issuer_key;
     } else {
-        /* Release issuer key handle if not requested. Life handles 2 -> 1 */
+        /* Release issuer key handle if not requested. Alive handles 2 -> 1 */
         /* Precondition: handle_count = 2 */
         crypto_ctx->key_free(crypto_ctx, issuer_key);
         /* Postcondition: handle_count = 1 */
