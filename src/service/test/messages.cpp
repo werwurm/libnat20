@@ -881,7 +881,7 @@ TEST_P(ReadMalformedRequestTestFixture, MalformedRequestHandling) {
 }
 
 TEST_F(MessagesTest, ReadTruncatedSliceInPromoteRequest) {
-    // Truncated Challenge field 8
+    // Truncated Compressed Context field 19
     WriteTestCborMessage({0x82, 0x01, 0xA1, 0x13, 0x42, 'a'});
 
     n20_msg_request_t request = {};
