@@ -629,8 +629,9 @@ n20_error_t n20_msg_request_read(n20_msg_request_t *request, n20_slice_t const m
         case n20_msg_request_type_eca_ee_sign_e:
             return n20_msg_eca_ee_sign_request_read(&istream, &request->payload.eca_ee_sign);
         default:
-            return n20_error_request_type_unknown_e;
+            break;
     }
+    return n20_error_request_type_unknown_e;
 }
 
 void n20_msg_promote_request_write(n20_stream_t *stream, n20_msg_promote_request_t const *request) {
