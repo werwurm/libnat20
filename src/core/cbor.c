@@ -118,7 +118,7 @@ bool n20_cbor_read_header(n20_istream_t *const s, n20_cbor_type_t *const type, u
     uint8_t additional_info = header & 0x1f;
 
     if (additional_info > 27) {
-        /* Reserved additional info value. And this code does
+        /* Reserved additional info value. And this code does not
          * support indefinite length encoding (31). */
         return false;
     }
