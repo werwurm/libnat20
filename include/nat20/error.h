@@ -112,7 +112,7 @@ enum n20_error_s {
      */
     n20_error_unexpected_null_public_key_e = 12,
 
-        /**
+    /**
      * @brief Unexpected message structure.
      *
      * This error is returned by message parsing function
@@ -172,6 +172,7 @@ enum n20_error_s {
      * if the context given is valid.
      */
     n20_error_crypto_invalid_context_e = 0x1001,
+
     /**
      * @brief Indicates that an input key argument was NULL.
      *
@@ -183,6 +184,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.sign
      */
     n20_error_crypto_unexpected_null_key_in_e = 0x1002,
+
     /**
      * @brief Indicates that an output key argument was NULL.
      *
@@ -193,6 +195,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.kdf
      */
     n20_error_crypto_unexpected_null_key_out_e = 0x1003,
+
     /**
      * @brief Indicates that a size output argument was NULL.
      *
@@ -205,6 +208,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.key_public_key
      */
     n20_error_crypto_unexpected_null_size_e = 0x1004,
+
     /**
      * @brief Indicates that the user data input argument was NULL.
      *
@@ -218,6 +222,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.kdf
      */
     n20_error_crypto_unexpected_null_data_e = 0x1005,
+
     /**
      * @brief Indicates that the user data input argument was NULL.
      *
@@ -232,6 +237,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.kdf
      */
     n20_error_crypto_unexpected_null_list_e = 0x1006,
+
     /**
      * @brief Indicates that the user data input argument was NULL.
      *
@@ -247,6 +253,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.sign
      */
     n20_error_crypto_unexpected_null_slice_e = 0x1007,
+
     /**
      * @brief This should not be used outside of development.
      *
@@ -259,6 +266,7 @@ enum n20_error_s {
      * must never tolerate unimplemented errors however.
      */
     n20_error_crypto_not_implemented_e = 0x1008,
+
     /**
      * @brief Indicates that an unknown algorithm was selected.
      *
@@ -269,6 +277,7 @@ enum n20_error_s {
      * @sa n20_crypto_digest_context_t.digest
      */
     n20_error_crypto_unknown_algorithm_e = 0x1009,
+
     /**
      * @brief Indicates that the key input argument is unsuitable for the requested operation.
      *
@@ -281,6 +290,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.key_public_key
      */
     n20_error_crypto_invalid_key_e = 0x100a,
+
     /**
      * @brief Indicates that the requested key type is out of range.
      *
@@ -291,6 +301,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.kdf
      */
     n20_error_crypto_invalid_key_type_e = 0x100b,
+
     /**
      * @brief Indicates that the user supplied buffer is insufficient.
      *
@@ -314,6 +325,7 @@ enum n20_error_s {
      * @sa n20_crypto_context_t.key_public_key
      */
     n20_error_crypto_insufficient_buffer_size_e = 0x100c,
+
     /**
      * @brief Indicates that an unexpected null pointer was received as argument.
      *
@@ -324,6 +336,7 @@ enum n20_error_s {
      * NULL.
      */
     n20_error_crypto_unexpected_null_e = 0x100d,
+
     /**
      * @brief Indicates that the implementation ran out of a critical resource.
      *
@@ -332,6 +345,7 @@ enum n20_error_s {
      * This includes memory allocation errors.
      */
     n20_error_crypto_no_resources_e = 0x100e,
+
     /**
      * @brief Indicates that an implementation specific error has occurred.
      *
@@ -339,6 +353,7 @@ enum n20_error_s {
      * by an implementation.
      */
     n20_error_crypto_implementation_specific_e = 0x100f,
+
     /**
      * @brief Indicates that the key slice was NULL.
      *
@@ -348,6 +363,7 @@ enum n20_error_s {
      * @sa n20_crypto_digest_context_t.hkdf
      */
     n20_error_crypto_unexpected_null_slice_key_e = 0x1010,
+
     /**
      * @brief Indicates that the salt slice was NULL.
      *
@@ -358,6 +374,7 @@ enum n20_error_s {
      * @sa n20_crypto_digest_context_t.hkdf_extract
      */
     n20_error_crypto_unexpected_null_slice_salt_e = 0x1011,
+
     /**
      * @brief Indicates that the info slice was NULL.
      *
@@ -368,6 +385,7 @@ enum n20_error_s {
      * @sa n20_crypto_digest_context_t.hkdf_extract
      */
     n20_error_crypto_unexpected_null_slice_info_e = 0x1012,
+
     /**
      * @brief Indicates that the IKM slice was NULL.
      *
@@ -377,6 +395,7 @@ enum n20_error_s {
      * @sa n20_crypto_digest_context_t.hkdf_extract
      */
     n20_error_crypto_unexpected_null_slice_ikm_e = 0x1013,
+
     /**
      * @brief Indicates that the PRK slice was NULL.
      *
@@ -386,7 +405,6 @@ enum n20_error_s {
      * @sa n20_crypto_digest_context_t.hkdf_extract
      */
     n20_error_crypto_unexpected_null_slice_prk_e = 0x1014,
-
 };
 
 /**
