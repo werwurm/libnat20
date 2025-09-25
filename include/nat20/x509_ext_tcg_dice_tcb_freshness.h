@@ -28,11 +28,6 @@ extern "C" {
 #endif
 
 /**
- * @brief Alias for @ref n20_x509_ext_tcg_dice_tcb_freshness_s
- */
-typedef struct n20_x509_ext_tcg_dice_tcb_freshness_s n20_x509_ext_tcg_dice_tcb_freshness_t;
-
-/**
  * @brief Renders the value of a TCG DICE TCB Freshness X509 extension.
  *
  * The function expects a pointer to an instance of
