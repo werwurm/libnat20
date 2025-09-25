@@ -63,6 +63,7 @@ set(LIBNAT20_SOURCES
     # Add the core library source files here.
     src/core/asn1.c
     src/core/cbor.c
+    src/core/functionality.c
     src/core/oid.c
     src/core/stream.c
     src/core/x509_ext_open_dice_input.c
@@ -80,6 +81,7 @@ set(LIBNAT20_PUB_HEADERS
     include/nat20/constants.h
     include/nat20/crypto.h
     include/nat20/error.h
+    include/nat20/functionality.h
     include/nat20/oid.h
     include/nat20/open_dice.h
     include/nat20/stream.h
@@ -110,9 +112,11 @@ set(LIBNAT20_TEST_SOURCES
     # Add test source files here.
     src/core/test/asn1.cpp
     src/core/test/cbor.cpp
+    src/core/test/functionality.cpp
     src/core/test/oid.cpp
     src/core/test/stream.cpp
     src/core/test/test.cpp
+    src/core/test/test_vectors.cpp
     src/core/test/x509.cpp
     src/core/test/x509_ext_open_dice_input.cpp
     src/core/test/x509_ext_tcg_dice_tcb_freshness.cpp
@@ -417,8 +421,8 @@ if (NAT20_WITH_TESTS)
     include(FetchContent)
 
     FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/5376968f6948923e2411081fd9372e71a59d8e77.zip
+        googletest
+        URL https://github.com/google/googletest/archive/5376968f6948923e2411081fd9372e71a59d8e77.zip
     )
     # For Windows: Prevent overriding the parent project's compiler/linker settings
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -429,6 +433,12 @@ if (NAT20_WITH_TESTS)
     file(COPY
         "src/crypto/test/test_data/"
         DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/test_data/crypto"
+        FILES_MATCHING PATTERN "*"
+    )
+
+    file(INSTALL
+        "src/core/test/test_data/"
+        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/test_data/core"
         FILES_MATCHING PATTERN "*"
     )
 

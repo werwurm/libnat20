@@ -42,6 +42,11 @@ enum n20_error_s {
     n20_error_ok_e = 0,
 
     /**
+     * @brief The function requires a crypto context to be passed, but none was provided.
+     */
+    n20_error_missing_crypto_context_e = 1,
+
+    /**
      * @brief Insufficient buffer size.
      *
      * This is typically returned by certificate rendering operations
@@ -58,6 +63,16 @@ enum n20_error_s {
     n20_error_unexpected_null_buffer_size_e = 4,
 
     /**
+     * @brief Unexpected NULL pointer key_handle argument.
+     */
+    n20_error_unexpected_null_key_handle_e = 5,
+
+    /**
+     * @brief Unexpected NULL pointer certificate info.
+     */
+    n20_error_unexpected_null_certificate_info_e = 6,
+
+    /**
      * @brief Write position overflow.
      *
      * A certificate rendering operation encountered a write position overflow.
@@ -66,6 +81,38 @@ enum n20_error_s {
     n20_error_write_position_overflow_e = 7,
 
     /**
+     * @brief Unexpected NULL pointer public key buffer.
+     *
+     * Returned by @ref n20_compute_certificate_context if no public key buffer
+     * was provided.
+     */
+    n20_error_unexpected_null_public_key_buffer_e = 8,
+
+    /**
+     * @brief Unsupported certificate type.
+     *
+     * Returned if an unexpected value of @ref n20_cert_type_t was encountered.
+     */
+    n20_error_unsupported_certificate_type_e = 9,
+
+    /**
+     * @brief Unsupported certificate format.
+     *
+     * Returned if an unexpected value of @ref n20_certificate_format_t was encountered.
+     */
+    n20_error_unsupported_certificate_format_e = 10,
+
+    /**
+     * @brief Unexpected NULL pointer key info.
+     */
+    n20_error_unexpected_null_key_info_e = 11,
+
+    /**
+     * @brief Unexpected NULL pointer public key.
+     */
+    n20_error_unexpected_null_public_key_e = 12,
+
+        /**
      * @brief Unexpected message structure.
      *
      * This error is returned by message parsing function
