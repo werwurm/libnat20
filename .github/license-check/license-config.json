@@ -18,6 +18,12 @@
   },
   {
     "include": [
+      "**/*.cddl"
+    ],
+    "license": "./.github/license-check/header-apache2-semicolon.txt"
+  },
+  {
+    "include": [
       "**/*.md",
       "**/*.txt"
     ],
