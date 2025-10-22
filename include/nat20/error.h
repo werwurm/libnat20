@@ -196,6 +196,18 @@ enum n20_error_s {
     n20_error_request_type_not_implemented_e = 19,
 
     /**
+     * @brief Incompatible compressed input size.
+     *
+     * The compressed input is the salt generated from the
+     * open dice input data. Its size is hard coded to 64 bytes
+     * (size of SHA512) by default but can be changed to 32 bytes
+     * (size of SHA256) at compile time.
+     * This error is returned if a compressed input is presented
+     * the service that is other than the hard coded supported size.
+     */
+    n20_error_incompatible_compressed_input_size_e = 20,
+
+    /**
      * @brief Unexpected NULL pointer in request argument.
      *
      * This error is returned by functions that expect a valid request
